@@ -1,0 +1,11 @@
+add_llvm_loadable_module(LLVMPrivAnalysis
+	ADT.cpp
+	FindExternNodes.cpp
+	PrivRemoveInsert.cpp
+	DSAExternAnalysis.cpp
+	GlobalLiveAnalysis.cpp
+	PropagateAnalysis.cpp
+	DynCount.cpp
+	LocalAnalysis.cpp
+	SplitBB.cpp
+)
