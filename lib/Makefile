@@ -13,6 +13,7 @@ include $(LEVEL)/Makefile.config
 PARALLEL_DIRS := IR AsmParser Bitcode Analysis Transforms CodeGen Target      \
                  ExecutionEngine Linker LTO MC Object Option DebugInfo        \
                  IRReader LineEditor ProfileData Passes LibDriver
-PARALLEL_DIRS += DSA
+
+PARALLEL_DIRS += DSA AssistDS
 
 include $(LEVEL)/Makefile.common
