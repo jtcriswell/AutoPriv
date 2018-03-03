@@ -102,17 +102,6 @@ bool PrivRemoveInsert::runOnModule(Module &M)
     // Insert remove call at the top of the main function
     Function *PrivRemoveFunc = getRemoveFunc(M);
     std::vector<Value *> Args = {};
-    Function *mainFunc = M.getFunction("main");
-    CAPArray_t &FirstCAPArray = FuncLiveCAPTable_in[mainFunc];
-
-    // Find all CAPs that's not alive - reverse of FuncLiveIn
-    ReverseCAPArray(FirstCAPArray);
-    addToArgs(Args, FirstCAPArray);
-
-    Instruction *firstInst = dyn_cast<Instruction>
-        (mainFunc->begin()->begin());
-    CallInst::Create(PrivRemoveFunc, ArrayRef<Value *>(Args), 
-                     PRIV_REMOVE_CALL, firstInst);
 
     // Insert call to all BBs with removable capabilities  
     for (auto BI = BBCAPTable_dropEnd.begin(), BE = BBCAPTable_dropEnd.end();
