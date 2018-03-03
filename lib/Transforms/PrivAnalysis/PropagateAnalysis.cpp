@@ -219,8 +219,10 @@ void PropagateAnalysis::print(raw_ostream &O, const Module *M) const
         Function *F = (*I).first;
         CAPArray_t A = (*I).second;
 
-        O << F->getName() << ": ";
-        dumpCAPArray(O, A);
+        if (F) {
+            O << F->getName() << ": ";
+            dumpCAPArray(O, A);
+        }
     }
 }
 
