@@ -101,7 +101,7 @@ void PropagateAnalysis::Propagate(Module &M)
     //     = getAnalysis<CallTargetFinder<TDDataStructures> >();
     const DSAExternAnalysis &DSAFinder = getAnalysis<DSAExternAnalysis>();
     FunctionMap_t callgraphMap = DSAFinder.callgraphMap;
-    
+
     // Add dummy external calls node function as NULL
     // Add them to function table 
     CallGraphNode* callsNode = CG.getCallsExternalNode();
