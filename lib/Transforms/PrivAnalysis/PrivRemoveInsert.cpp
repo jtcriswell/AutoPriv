@@ -89,6 +89,21 @@ void PrivRemoveInsert::addToArgs(std::vector<Value *>& Args,
     return;
 }
 
+static inline bool
+instrumentBasicBlock (const BasicBlock * BB) {
+	if (isa<UnreachableInst>(BB->getTerminator())) {
+		return false;
+	}
+	if (const CallInst * CI = dyn_cast<CallInst>(BB->getFirstNonPHI())) {
+		if (const Function * F = CI->getCalledFunction()) {
+			if (F->getName().str() == "llvm.trap") {
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
 
 // Run on Module
 bool PrivRemoveInsert::runOnModule(Module &M)
@@ -114,8 +129,10 @@ bool PrivRemoveInsert::runOnModule(Module &M)
 
         // create call instruction
         assert(BB->getTerminator() != NULL && "BB has a NULL teminator!");
-        CallInst::Create(PrivRemoveFunc, ArrayRef<Value *>(Args), 
-                         PRIV_REMOVE_CALL, BB->getTerminator());
+	if (instrumentBasicBlock (BB)) {
+		CallInst::Create(PrivRemoveFunc, ArrayRef<Value *>(Args), 
+				 "", BB->getTerminator());
+	}
     }
 
 
@@ -129,8 +146,10 @@ bool PrivRemoveInsert::runOnModule(Module &M)
         addToArgs(Args, CAPArray);
 
         // create call instruction
-        CallInst::Create(PrivRemoveFunc, ArrayRef<Value *>(Args), 
-                         PRIV_REMOVE_CALL, BB->getFirstNonPHI());
+	if (instrumentBasicBlock (BB)) {
+		CallInst::Create(PrivRemoveFunc, ArrayRef<Value *>(Args), 
+				 "", BB->getFirstNonPHI());
+	}
     }
 
     return true;
