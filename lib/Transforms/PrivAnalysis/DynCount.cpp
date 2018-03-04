@@ -25,7 +25,7 @@ using namespace llvm::dynCount;
 
 
 // constructor
-DynCount::DynCount() : ModulePass(ID) { };
+DynCount::DynCount() : ModulePass(ID) { }
 
 
 // Preserve analysis usage
