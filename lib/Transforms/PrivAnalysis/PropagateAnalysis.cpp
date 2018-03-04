@@ -162,7 +162,7 @@ void PropagateAnalysis::Propagate(Module &M)
                 // analysis), then it could propagate from only 
                 // the resolved function pointers
                 // --------------------------------------------- //
-                if (callee == callsNode) { 
+                if (callee == callsNode) {
                     // Find in DSA. If compelete in DSA, then don't propagate
                     // from extern callsnode 
                     if (callgraphMap.find(FCallee) != callgraphMap.end()) {
