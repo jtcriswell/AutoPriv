@@ -51,37 +51,114 @@ typedef std::map<CAPArray_t, int> CAPSet_t;
 // --------------------------- //
 // Data manipulation functions
 // --------------------------- //
-// Get the function where the CallInst is in, 
-// add to map from Function to CAPArray
-void AddToFuncCAPTable(FuncCAPTable_t &CAPTable, 
-                       Function *F, CAPArray_t CAParray);
 
-// Get the BasicBlock where the CallInst is in
-// add to map from BasicBlock to CAPArray
-void AddToBBCAPTable(BBCAPTable_t &CAPTable, 
-                     BasicBlock *B, CAPArray_t CAParray);
+//
+// Add to the FuncCAPTable, if Func exists, merge the CAPArray
+// param: CAPTable - ref to the FuncCAPTable
+//        F - the function to add
+//        CAParray - the array of capability to add to FuncCAPTable
+static inline void
+AddToFuncCAPTable(FuncCAPTable_t &CAPTable, Function *F, CAPArray_t CAParray) {
+    // If not found in map, add to map
+    // else, Union the two arrays
+    if (CAPTable.find(F) == CAPTable.end()) {
+        CAPTable[F] = CAParray;
+    } else {
+        CAPTable[F] |= CAParray;
+    }
+}
 
-// Copy CAPTable keys from src to dest, with array empty
-void CopyTableKeys(FuncCAPTable_t &dest, const FuncCAPTable_t &src);
+// Add to the BBCAPTable, if BB exists, merge the CAPArray
+// param: CAPTable - ref to the BBCAPTable
+//        B - the BasicBlock to add
+//        CAParray - the array of capability to add to FuncCAPTable
+static inline void
+AddToBBCAPTable(BBCAPTable_t &CAPTable, BasicBlock *B, CAPArray_t CAParray) {
+    // If not found in map, add to map
+    // else, Union the two arrays
+    if (CAPTable.find(B) == CAPTable.end() ) {
+        CAPTable[B] = CAParray;
+    } else {
+        CAPTable[B] |= CAParray;
+    }
+}
+
+// Copy CAPTable keys from src to dest
+// After this operation, dest would have all keys src
+// has, with empty CAPArrays mapping to each keys
+// param: dest - dest CAPTable
+//        src  - src CAPTable
+static inline void
+CopyTableKeys(FuncCAPTable_t &dest, const FuncCAPTable_t &src) {
+    CAPArray_t emptyArray = 0;
+
+    for(auto MI = src.begin(), ME = src.end(); MI != ME; ++ MI) {
+  
+        Function *tf = MI->first;
+
+        dest[tf] = emptyArray;
+    }
+}
 
 // ------------------- //
 // Array manipulations
 // ------------------- //
+
 // Find the size of the input array
-int findCAPArraySize(const CAPArray_t &A);
+// param: A - the input array
+// return the number of the capablities inside CAPArray 
+static inline int
+findCAPArraySize(const CAPArray_t &A) {
+    // to be refactored
+    int size = 0;
+    for (int i = 0; i < CAP_TOTALNUM; ++i){
+        size += ((uint64_t)1 << i) & A;
+    }
 
-// Union two arrays, save result to dest and test dest ischanged
-bool UnionCAPArrays(CAPArray_t &dest, const CAPArray_t &src);
+    return size;
+}
 
-// Diff two arrays, save result
-// return if there is difference
-bool DiffCAPArrays(CAPArray_t &dest, const CAPArray_t &A, const CAPArray_t &B); 
+// Union two arrays, save result to dest
+// param: dest - dest CAPArray
+//        src  - src CAPArray
+// return: ischanged - if the dest's value is changed
+static inline bool
+UnionCAPArrays(CAPArray_t &dest, const CAPArray_t &src) {
+    bool ischanged = false;
+
+    ischanged = ~dest & src;
+    dest = dest | src;
+
+    return ischanged;
+}
+
+// Diff two arrays, save result to dest
+// param: dest - dest CAPArray
+//        A - the CAPArray to subtract from
+//        B - the CAPArray to subtract
+// return: if there is difference between A and B
+static inline bool
+DiffCAPArrays(CAPArray_t &dest, const CAPArray_t &A, const CAPArray_t &B) {
+    assert( (A | ~B) && "\nBUG in Diff CAPArrays!\n\n");
+    dest = A & ~B;
+    return (bool)dest;
+} 
+
 
 // Find the reverse of cap array
-void ReverseCAPArray(CAPArray_t &A);
+// param: the CAParray to reverse
+static inline void
+ReverseCAPArray(CAPArray_t &A) {
+    A = ~A;
+}
 
 // If the CAPArray is empty
-bool IsCAPArrayEmpty(const CAPArray_t &A);
+// @A: the CAPArray to examine
+// return: if it's empty
+static inline bool
+IsCAPArrayEmpty(const CAPArray_t &A) {
+    return (A == 0);
+}
 
 // Dump CAPArray 
 void dumpCAPArray(raw_ostream &O, const CAPArray_t &A);
