@@ -15,6 +15,7 @@
 #include "ADT.h"
 #include "PrivRemoveInsert.h"
 #include "GlobalLiveAnalysis.h"
+#include "FindSignalHandlers.h"
 
 
 using namespace llvm;
@@ -31,6 +32,7 @@ PrivRemoveInsert::PrivRemoveInsert() : ModulePass(ID)
 void PrivRemoveInsert::getAnalysisUsage(AnalysisUsage &AU) const
 {
     AU.addRequired<GlobalLiveAnalysis>();
+    AU.addRequired<FindSignalHandlers>();
 }
 
 
@@ -118,6 +120,11 @@ bool PrivRemoveInsert::runOnModule(Module &M)
     Function *PrivRemoveFunc = getRemoveFunc(M);
     std::vector<Value *> Args = {};
 
+    //
+    // Find all of the signal handlers.
+    //
+    FindSignalHandlers &SigHandlers = getAnalysis<FindSignalHandlers>();
+
     // Insert call to all BBs with removable capabilities  
     for (auto BI = BBCAPTable_dropEnd.begin(), BE = BBCAPTable_dropEnd.end();
          BI != BE; ++BI) {
@@ -126,6 +133,13 @@ bool PrivRemoveInsert::runOnModule(Module &M)
         Args.clear();
 
         addToArgs(Args, CAPArray);
+
+	//
+	// If the basic block belongs to a signal handler, do not instrument it.
+	//
+	if (SigHandlers.isSignalHandler (BB->getParent())) {
+		continue;
+	}
 
         // create call instruction
         assert(BB->getTerminator() != NULL && "BB has a NULL teminator!");
