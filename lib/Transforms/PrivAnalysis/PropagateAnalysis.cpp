@@ -121,14 +121,23 @@ void PropagateAnalysis::Propagate(Module &M)
     do {
         ischanged = false;
 
-        // iterate the whole callgraph 
+        //
+        // Iterate the whole callgraph.  For each node, propagate information
+        // from callees into callers.
+        //
         for (CallGraph::iterator NI = CG.begin(), NE = CG.end();
              NI != NE; ++NI) {
+            //
             // Get CallgraphNode
+            //
             CallGraphNode *N = NI->second;
-            Function *FCaller;
 
-            // special handle external nodes
+            //
+            // Special handle external nodes: use the dummy function for the
+            // external node that calls into the module and ignore the node
+            // representing external functions that we call.
+            //
+            Function *FCaller;
             if (N == callingNode)    { FCaller = callingNodeFunc; }
             else if (N == callsNode) { continue; }
             else                     { FCaller = N->getFunction(); }
@@ -137,8 +146,10 @@ void PropagateAnalysis::Propagate(Module &M)
             CAPArray_t &callerIn = FuncCAPTable_in[FCaller];
             CAPArray_t &callerOut = FuncCAPTable_out[FCaller];
 
+            //
             // Iterate through Callgraphnode for callees
             // propagate info from callee to caller
+            //
             for (CallGraphNode::iterator RI = N->begin(), RE = N->end();
                  RI != RE; ++RI) {
                 CallGraphNode* callee = RI->second;
@@ -214,6 +225,7 @@ void PropagateAnalysis::Propagate(Module &M)
 // Print out information for debugging purposes
 void PropagateAnalysis::print(raw_ostream &O, const Module *M) const
 {
+    O << "Propagate Analysis\n";
     for (auto I = FuncCAPTable.begin(), E = FuncCAPTable.end();
          I != E; ++I) {
         Function *F = (*I).first;
