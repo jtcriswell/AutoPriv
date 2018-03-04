@@ -180,6 +180,29 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
         } // iterate all functions
     } while (ischanged); // main loop
 
+#if 0
+    for (auto FI = FuncUseCAPTable.begin(), FE = FuncUseCAPTable.end(); 
+         FI != FE; ++FI) {
+        Function *F = FI->first;
+        if (F == NULL || F->empty()) { continue; }
+        for (Function::iterator BI = F->begin(), BEnd = F->end();
+             BI != BEnd;
+             ++BI) {
+            BasicBlock * BB = BI;
+
+            errs() << F->getName().str() << " ";
+            errs() << BB->getName().str() << " ";
+            dumpCAPArray (errs(),BBCAPTable_in[BB]);
+
+            errs() << F->getName().str() << " ";
+            errs() << BB->getName().str() << " ";
+            dumpCAPArray (errs(),BBCAPTable_out[BB]);
+            errs() << "\n";
+        }
+        errs() << "\n";
+    }
+#endif
+
     // ------------------------------------------ //
     // Find Difference of BB in and out CAPArrays
     // Save it to the output 
@@ -222,7 +245,9 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
     // DEBUG
     // ----------------------------------- //
     // Dump the table for debugging
-    // dumpTable();
+#if 0
+    dumpTable();
+#endif
 
     // Find unique set for debug output or ROSA
     // findUniqueSet();
@@ -262,7 +287,7 @@ void GlobalLiveAnalysis::findReturnBB(Module &M, FuncReturnBB_t& FuncReturnBB)
         BasicBlock *UnwindBB = UnifyExitNode.getUnwindBlock();
 
         assert(UnwindBB == NULL && "So far not dealing with unwind block\n");
-        assert((ReturnBB != NULL || UnReachableBB != NULL) && "Return BB is NULL\n");
+        assert(((ReturnBB != NULL) || (UnReachableBB != NULL)) && "Return BB is NULL\n");
 
         FuncReturnBB[F] = ReturnBB;
     }
@@ -280,7 +305,7 @@ bool compareSet(const std::pair<CAPArray_t, int> A,
 // Print out information for debugging purposes
 void GlobalLiveAnalysis::print(raw_ostream &O, const Module *M) const
 {
-    errs() << "Dumping information for unique capability set.\n\n";
+    errs() << "Global Live Privilege Analysis\n\n";
 
     std::vector<std::pair<CAPArray_t, int> >Setcopy(CAPSet.begin(), CAPSet.end());
 
