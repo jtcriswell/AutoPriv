@@ -159,6 +159,13 @@ bool PrivRemoveInsert::runOnModule(Module &M)
 
         addToArgs(Args, CAPArray);
 
+	//
+	// If the basic block belongs to a signal handler, do not instrument it.
+	//
+	if (SigHandlers.isSignalHandler (BB->getParent())) {
+		continue;
+	}
+
         // create call instruction
 	if (instrumentBasicBlock (BB)) {
 		CallInst::Create(PrivRemoveFunc, ArrayRef<Value *>(Args), 
