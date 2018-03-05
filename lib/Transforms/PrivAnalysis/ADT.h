@@ -126,8 +126,8 @@ static inline bool
 UnionCAPArrays(CAPArray_t &dest, const CAPArray_t &src) {
     bool ischanged = false;
 
-    ischanged = ~dest & src;
-    dest = dest | src;
+    ischanged = (~dest & src);
+    dest = (dest | src);
 
     return ischanged;
 }
