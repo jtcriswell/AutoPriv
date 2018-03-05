@@ -60,7 +60,7 @@ public:
     void print(raw_ostream &O, const Module *M) const;
 private:
     // Split instruction on all the Function calling sites
-    void splitOnFunction(Function *F, int splitLoc);
+    void splitOnFunction(Function *F, unsigned splitLoc);
 
 }; // struct splitBB
 

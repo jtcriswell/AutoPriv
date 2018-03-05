@@ -72,7 +72,7 @@ bool SplitBB::runOnModule(Module &M)
 //        splitLoc - SPLIT_HERE split on the instruction
 //                   SPLIT_NEXT split on the next instruction
 //                   SPLIT_HERE | SPLIT_NEXT split both locations
-void SplitBB::splitOnFunction(Function *F, int splitLoc)
+void SplitBB::splitOnFunction(Function *F, unsigned splitLoc)
 {
     // Iterate all uses for calling instruction
     for (Value::user_iterator UI = F->user_begin(), UE = F->user_end();
