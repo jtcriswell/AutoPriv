@@ -42,6 +42,9 @@ FindSignalHandlers::runOnModule (Module &M) {
   // handlers.
   //
   Function * Signal = M.getFunction ("signal");
+  if (!Signal) {
+    return false;
+  }
 
   //
   // Iterate through all uses of the signal function and find the functions
