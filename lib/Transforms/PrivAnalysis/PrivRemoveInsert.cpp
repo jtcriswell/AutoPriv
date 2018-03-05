@@ -71,7 +71,7 @@ void PrivRemoveInsert::addToArgs(std::vector<Value *>& Args,
     int cap = 0;
 
     for (cap = 0; cap < CAP_TOTALNUM; ++cap) {
-        if ((CAPArray & (1 << cap)) == 0) {
+        if ((CAPArray & ((uint64_t)1u << cap)) == 0) {
             continue;
         }
 
