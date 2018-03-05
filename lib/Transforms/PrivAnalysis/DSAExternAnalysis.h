@@ -26,7 +26,7 @@ namespace dsaexterntarget {
 
 using namespace dsa;
 
-typedef std::unordered_map<CallSite*, std::vector<Function*> > CallSiteFunMap_t;
+typedef std::unordered_map<CallInst*, std::vector<Function*> > CallSiteFunMap_t;
 typedef std::unordered_map<Function*, std::vector<Function*> > FunctionMap_t;
 typedef std::unordered_map<Instruction*, std::vector<Function*> > InstrFunMap_t;
 

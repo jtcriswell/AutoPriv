@@ -79,7 +79,7 @@ void DSAExternAnalysis::findAllCallSites(CallTargetFinder<TDDataStructures> &CTF
                  FE = CTF.end(CS);
              FI != FE; ++FI) {
             Function* F = const_cast<Function*>(*FI);
-            callsToExternNode[&CS].push_back(F);
+            callsToExternNode[cast<CallInst>(CS.getInstruction())].push_back(F);
         }
     }
 }
@@ -100,14 +100,13 @@ void DSAExternAnalysis::saveToMappings(CallTargetFinder<TDDataStructures> &CTF)
     for (CallSiteFunMap_t::iterator FI = callsToExternNode.begin(), 
              FE = callsToExternNode.end();
          FI != FE; ++FI) {
-        CallSite* CS = FI->first;
-        CallInst* callInst = dyn_cast<CallInst>(FI->first->getInstruction());
+        CallInst* callInst = FI->first;
         Function* caller = callInst->getParent()->getParent();
         std::vector<Function*>callees = FI->second;
 
         // if function callsite is incomplete, then skip adding and delete 
         // them from callgraph
-        if (!CTF.isComplete(*CS)) {
+        if (!CTF.isComplete(callInst)) {
             incompleteFuns.push_back(caller);
             continue;
         }

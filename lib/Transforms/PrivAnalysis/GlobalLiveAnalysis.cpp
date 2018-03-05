@@ -121,8 +121,8 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
                     CallSite CS(BBcallInst);
 
                     // If calling to externnode
-                    if (callsToExternNode.find(&CS) != callsToExternNode.end()) {
-
+                    CallInst * CI = dyn_cast<CallInst>(BBcallInst);
+                    if (callsToExternNode.find(CI) != callsToExternNode.end()) {
                         // Skip LLVM intrinsic functions
                         if (isa<IntrinsicInst>(BBcallInst)) { continue; }
 
