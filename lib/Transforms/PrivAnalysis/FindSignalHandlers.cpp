@@ -64,7 +64,20 @@ FindSignalHandlers::runOnModule (Module &M) {
 }
 
 
-void FindSignalHandlers::print(raw_ostream &O, const Module *M) const {
+//
+// Method: print()
+//
+// Description:
+//   Print the list of identified signal handlers to the specified output
+//   stream.
+//
+void
+FindSignalHandlers::print(raw_ostream &O, const Module *M) const {
+  std::set <const Function *>::iterator fi = SignalHandlers.begin();
+  std::set <const Function *>::iterator fe = SignalHandlers.end();
+  for (; fi != fe; ++fi) {
+    O << (*fi)->getName().str() << "\n";
+  }
 }
 
 // Register the pass
