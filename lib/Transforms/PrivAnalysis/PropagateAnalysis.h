@@ -20,6 +20,7 @@
 #include "ADT.h"
 
 #include <vector>
+#include <set>
 
 using namespace llvm::privAnalysis;
 
@@ -46,6 +47,9 @@ public:
     // Dummy Node of callingNode and callsNode
     Function* callingNodeFunc;
     Function* callsNodeFunc;
+
+    // Set of functions called by external code
+    std::set<Function *> calledFromExternalCode;
 
     // constructor
     PropagateAnalysis();

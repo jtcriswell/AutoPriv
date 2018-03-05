@@ -219,6 +219,20 @@ void PropagateAnalysis::Propagate(Module &M)
     // FuncCAPTable_in.erase(callingNodeFunc);
 
     FuncCAPTable = FuncCAPTable_in;
+
+    //
+    // Record which functions are called by external code.
+    //
+    for (CallGraphNode::iterator RI = callingNode->begin(),
+                                 RE = callingNode->end();
+                                 RI != RE; ++RI) {
+        CallGraphNode* callee = RI->second;
+        if (Function* FCallee = callee->getFunction()) {
+            if (FCallee != M.getFunction("main")) {
+                calledFromExternalCode.insert (FCallee);
+            }
+        }
+    }
 }
 
 

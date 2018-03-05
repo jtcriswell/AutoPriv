@@ -74,6 +74,7 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
 
     const DSAExternAnalysis &DSAFinder = getAnalysis<DSAExternAnalysis>();
     CallSiteFunMap_t callsToExternNode = DSAFinder.callsToExternNode;
+    std::set<Function *> & calledFromExternalCode = PA.calledFromExternalCode;
     InstrFunMap_t instFunMap = DSAFinder.instFunMap;
 
     // find the returnBB of all functions
@@ -141,13 +142,7 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
                                                             BBCAPTable_out[B]);
                             }
                         }
-                        // else if incomplete, propagate from callsExternNode
-                        else {
-                            ischanged |= UnionCAPArrays(BBCAPTable_in[B],
-                                                        FuncUseCAPTable[callsNodeFunc]);
-                        }
                     }
-
                     ischanged |= UnionCAPArrays(BBCAPTable_in[B],
                                                 FuncUseCAPTable[funcall]);
                     // propagate information to returnBB of function
@@ -160,6 +155,14 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
                 if (BBCAPTable.find(B) != BBCAPTable.end()) {
                     ischanged |= UnionCAPArrays(BBCAPTable_in[B], BBCAPTable[B]);
                     //ischangedFunc |= ischanged;
+                } else if (calledFromExternalCode.count (B->getParent())) {
+                    //
+                    // If the basic block belongs to a function that is called
+                    // from external code, propgate information from the
+                    // external calling node in the call graph.
+                    //
+                    ischanged |= UnionCAPArrays(BBCAPTable_out[B],
+                                                FuncUseCAPTable[callsNodeFunc]);
                 }
 
                 // propagate from all its successors
