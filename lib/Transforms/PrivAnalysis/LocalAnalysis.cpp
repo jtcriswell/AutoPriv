@@ -49,7 +49,7 @@ void LocalAnalysis::RetrieveAllCAP(CallInst *CI, CAPArray_t &CAPArray)
         unsigned int iarg = I->getZExtValue();
 
         // Add it to the array
-        CAPArray |= 1 << iarg;
+        CAPArray |= ((uint64_t)1u << iarg);
     }
 }
 
