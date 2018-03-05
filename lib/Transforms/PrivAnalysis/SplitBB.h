@@ -61,6 +61,7 @@ public:
 private:
     // Split instruction on all the Function calling sites
     void splitOnFunction(Function *F, unsigned splitLoc);
+    void splitOnCall(CallInst * CI, unsigned splitLoc);
 
 }; // struct splitBB
 

@@ -63,6 +63,28 @@ bool SplitBB::runOnModule(Module &M)
         splitOnFunction(F, SPLIT_HERE | SPLIT_NEXT);
     }
 
+    //
+    // Split on all remaining function calls.
+    //
+    std::vector<CallInst *> callsToTransform;
+    for (Module::iterator FI = M.begin(), FE = M.end();
+         FI != FE; ++ FI) {
+        for (Function::iterator BB = FI->begin(); BB != FI->end(); ++BB) {
+            for (BasicBlock::iterator i = BB->begin(); i != BB->end(); ++i) {
+                if (CallInst * CI = dyn_cast<CallInst>(i)) {
+                    if (!(isa<InlineAsm>(CI->getCalledValue()->stripPointerCasts()))) {
+                        if (CI->getCalledFunction() == 0) {
+                            callsToTransform.push_back (CI);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (unsigned index = 0; index < callsToTransform.size(); ++index) {
+        splitOnCall(callsToTransform[index], SPLIT_HERE | SPLIT_NEXT);
+    }
     return true;
 }
 
@@ -136,6 +158,38 @@ void SplitBB::splitOnFunction(Function *F, unsigned splitLoc)
 
     } // iterate all uses for calling instructions
 } // split on function
+
+void
+SplitBB::splitOnCall(CallInst * CI, unsigned splitLoc) {
+    // If split on the head of the calling instruction
+    if (splitLoc & SPLIT_HERE) {
+        BasicBlock *BB = CI->getParent();
+
+        if (dyn_cast<Instruction>(CI) !=
+            dyn_cast<Instruction>(BB->begin())) {
+
+            // Split on the instruction
+            // Old BB now has an extra jmp as terminator,
+            // save Old BB for later counting
+            BasicBlock *NewBB = BB->splitBasicBlock(CI);
+            NewBB->setName (BB->getName());
+            ExtraJMPBB.push_back(BB);
+        }
+    }
+
+    // If split on next of the calling instruction
+    if (splitLoc & SPLIT_NEXT) {
+        BasicBlock *BB = CI->getParent();
+
+        if (dyn_cast<Instruction>(CI) !=
+            dyn_cast<Instruction>(BB->end())) {
+
+            BasicBlock * NewBB = BB->splitBasicBlock(CI->getNextNode());
+            NewBB->setName (BB->getName());
+            ExtraJMPBB.push_back(BB);
+        }
+    }
+}
 
 
 void SplitBB::print(raw_ostream &O, const Module *M) const
