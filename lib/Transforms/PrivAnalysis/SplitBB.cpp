@@ -93,7 +93,7 @@ void SplitBB::splitOnFunction(Function *F, int splitLoc)
                 // Old BB now has an extra jmp as terminator,
                 // save Old BB for later counting
                 BasicBlock *NewBB = BB->splitBasicBlock(CI);
-		NewBB->setName (BB->getName());
+                NewBB->setName (BB->getName());
 
                 ExtraJMPBB.push_back(BB);
 
@@ -128,7 +128,7 @@ void SplitBB::splitOnFunction(Function *F, int splitLoc)
                 dyn_cast<Instruction>(BB->end())) {
 
                 BasicBlock * NewBB = BB->splitBasicBlock(CI->getNextNode());
-		NewBB->setName (BB->getName());
+                NewBB->setName (BB->getName());
 
                 ExtraJMPBB.push_back(BB);
             }
