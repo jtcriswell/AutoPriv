@@ -340,7 +340,7 @@ void GlobalLiveAnalysis::dumpTable()
         CAPArray_t &CAPArray_out = BBCAPTable_out[B];
         ++count;
         // In 
-        errs() << "BB" << count
+        errs() << "BB" << B->getName().str()
                << " in " << B->getParent()->getName() << ":  \t";
         for (int i = 0; i < CAP_TOTALNUM; ++i) {
             if (CAPArray_in & ((uint64_t) 1 << i)){
@@ -348,7 +348,7 @@ void GlobalLiveAnalysis::dumpTable()
             }
         }
 
-        errs() << "\nBB" << count
+        errs() << "\nBB" << B->getName().str()
                << " out " << B->getParent()->getName() << ":  \t";
         // Out
         for (unsigned int i = 0; i < CAP_TOTALNUM; ++i) {
