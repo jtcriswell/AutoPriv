@@ -7,6 +7,7 @@
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Value.h"
@@ -49,9 +50,10 @@ FindSignalHandlers::runOnModule (Module &M) {
   for (Value::user_iterator UI = Signal->user_begin(), UE = Signal->user_end();
        UI != UE; ++UI) {
     if (CallInst *CI = dyn_cast<CallInst>(*UI)) {
-      if (CI && (CI->getCalledFunction()->stripPointerCasts() == Signal)) {
-        Function * F;
-        if ((F = dyn_cast<Function>(CI->getOperand(2)->stripPointerCasts()))) {
+      if (CI && ((CI->getCalledFunction()->stripPointerCasts()) == Signal)) {
+        CallSite CS(CI);
+        Value * SigHandler = CS.getArgument(1)->stripPointerCasts();
+        if (Function * F = dyn_cast<Function>(SigHandler)) {
           SignalHandlers.insert(F);
         }
       }
