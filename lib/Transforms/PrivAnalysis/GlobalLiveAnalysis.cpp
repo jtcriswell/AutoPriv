@@ -237,12 +237,18 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
         BasicBlock *B = bi->first;
         if (B == NULL ) { continue; }
 
+        // Set of capabilities that need to be dropped
+        CAPArray_t dropCaps;
         CAPArray_t &CAPArray_out = bi->second;
         CAPArray_t &CAPArray_in = BBCAPTable_in[B];
 
-        // compare the in and the out of the same BB
-        if (DiffCAPArrays(BBCAPTable_dropEnd[B], CAPArray_in, CAPArray_out) == 0) {
-            BBCAPTable_dropEnd.erase(B);
+        //
+        // Compute the capabilities that should be removed between the
+        // beginning and end of the basic block.
+        //
+        DiffCAPArrays(dropCaps, CAPArray_in, CAPArray_out);
+        if (!(IsCAPArrayEmpty(dropCaps))) {
+            BBCAPTable_dropEnd[B] = dropCaps;
         }
 
         // compare the out with all ins of the child BB, put in drop start of children
@@ -253,17 +259,10 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
             BasicBlock *SuccessorBB = BBTerm->getSuccessor(BSI);
             CAPArray_t CAPSuccessor_in = BBCAPTable_in[SuccessorBB];
 
-            DiffCAPArrays(BBCAPTable_dropStart[SuccessorBB], 
-                          CAPArray_out, CAPSuccessor_in);
-        }
-    }
-
-    // Remove unnecessary BBDropstart
-    for (auto bi = BBCAPTable_out.begin(); 
-         bi != BBCAPTable_out.end(); ++bi) {
-
-        if (IsCAPArrayEmpty(BBCAPTable_dropStart[bi->first])) {
-            BBCAPTable_dropStart.erase(bi->first);
+            DiffCAPArrays(dropCaps, CAPArray_out, CAPSuccessor_in);
+            if (!(IsCAPArrayEmpty(dropCaps))) {
+                BBCAPTable_dropStart[SuccessorBB] = dropCaps;
+            }
         }
     }
 
