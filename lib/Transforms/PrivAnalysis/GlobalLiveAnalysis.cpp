@@ -98,11 +98,8 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
             // Traversing BBs in reverse order now because it's closer to
             // topologically reverse order of how BBs are arranged in LLVM, 
             // and it's faster for dataflow analysis to converge
-            Function::iterator BI = F->end(), BBegin = F->begin();
-            while (1) {
-                if (BI != BBegin) { --BI; }
-                else { break; }
-
+            Function::iterator BI = F->begin(), BBegin = F->end();
+            for (; BI != BBegin; ++BI) {
                 BasicBlock *B = dyn_cast<BasicBlock>(BI);
                 if (B == NULL) { continue; }
 
