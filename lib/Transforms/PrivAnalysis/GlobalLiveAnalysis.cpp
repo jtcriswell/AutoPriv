@@ -94,89 +94,106 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
             Function *F = FI->first;
             if (F == NULL || F->empty()) { continue; }
 
+            //
             // Iterate through all BBs for information propagation
             // Traversing BBs in reverse order now because it's closer to
             // topologically reverse order of how BBs are arranged in LLVM, 
             // and it's faster for dataflow analysis to converge
-            Function::iterator BI = F->begin(), BBegin = F->end();
-            for (; BI != BBegin; ++BI) {
-                BasicBlock *B = dyn_cast<BasicBlock>(BI);
-                if (B == NULL) { continue; }
+            //
+            bool bbchanged = true;
+            while (bbchanged == true) {
+                //
+                // Reset the flag indicating whether any basic block information
+                // has changed.
+                //
+                bbchanged = false;
+                Function::iterator BI = F->begin(), BBegin = F->end();
+                for (; BI != BBegin; ++BI) {
+                    BasicBlock *B = dyn_cast<BasicBlock>(BI);
+                    if (B == NULL) { continue; }
 
-                // ---------------------------------------------------------- //
-                // Propagate information in each BB
-                // ---------------------------------------------------------- //
-                // if it's a FunCall BB (found as key in BBFuncTable), add the 
-                // live info to CAPTable of callee's exit BB
-                // TODO: Consider cases for external nodes and 
-                // TODO: DSA related info here
-                if (BBFuncTable.find(B) != BBFuncTable.end()) {
-                    Function* funcall = BBFuncTable[B];
+                    // ---------------------------------------------------------- //
+                    // Propagate information in each BB
+                    // ---------------------------------------------------------- //
+                    // if it's a FunCall BB (found as key in BBFuncTable), add the 
+                    // live info to CAPTable of callee's exit BB
+                    // TODO: Consider cases for external nodes and 
+                    // TODO: DSA related info here
+                    if (BBFuncTable.find(B) != BBFuncTable.end()) {
+                        Function* funcall = BBFuncTable[B];
 
-                    // Find the callinst of the BB
-                    Instruction* BBcallInst = B->getFirstNonPHI();
+                        // Find the callinst of the BB
+                        Instruction* BBcallInst = B->getFirstNonPHI();
 
-                    CallSite CS(BBcallInst);
+                        CallSite CS(BBcallInst);
 
-                    // If calling to externnode
-                    CallInst * CI = dyn_cast<CallInst>(BBcallInst);
-                    if (callsToExternNode.find(CI) != callsToExternNode.end()) {
-                        // Skip LLVM intrinsic functions
-                        if (isa<IntrinsicInst>(BBcallInst)) { continue; }
+                        // If calling to externnode
+                        CallInst * CI = dyn_cast<CallInst>(BBcallInst);
+                        if (callsToExternNode.find(CI) != callsToExternNode.end()) {
+                            // Skip LLVM intrinsic functions
+                            if (isa<IntrinsicInst>(BBcallInst)) { continue; }
 
-                        // DEBUG
-                        errs() << "Empty function: " << funcall->getName() << "\n";
+                            // DEBUG
+                            errs() << "Empty function: " << funcall->getName() << "\n";
 
-                        // If complete from DSA analysis
-                        if (instFunMap.find(BBcallInst) != instFunMap.end()) {
-                            std::vector<Function*> Instcallees = instFunMap[BBcallInst];
-                            for (std::vector<Function*>::iterator II = Instcallees.begin(),
-                                     IE = Instcallees.end(); II != IE; ++II) {
-                                Function* callee = *II;
-                                ischanged |= UnionCAPArrays(BBCAPTable_in[B],
-                                                            FuncUseCAPTable[callee]);
-                                ischanged |= UnionCAPArrays(BBCAPTable_out[funcReturnBB[callee]],
-                                                            BBCAPTable_out[B]);
+                            // If complete from DSA analysis
+                            if (instFunMap.find(BBcallInst) != instFunMap.end()) {
+                                std::vector<Function*> Instcallees = instFunMap[BBcallInst];
+                                for (std::vector<Function*>::iterator II = Instcallees.begin(),
+                                         IE = Instcallees.end(); II != IE; ++II) {
+                                    Function* callee = *II;
+                                    bbchanged |= UnionCAPArrays(BBCAPTable_in[B],
+                                                                FuncUseCAPTable[callee]);
+                                    bbchanged |= UnionCAPArrays(BBCAPTable_out[funcReturnBB[callee]],
+                                                                BBCAPTable_out[B]);
+                                }
                             }
                         }
+                        bbchanged |= UnionCAPArrays(BBCAPTable_in[B],
+                                                    FuncUseCAPTable[funcall]);
+                        // propagate information to returnBB of function
+                        Function *callee = BBFuncTable[B];
+                        bbchanged |= UnionCAPArrays(BBCAPTable_out[funcReturnBB[callee]],
+                                                    BBCAPTable_out[B]);
                     }
-                    ischanged |= UnionCAPArrays(BBCAPTable_in[B],
-                                                FuncUseCAPTable[funcall]);
-                    // propagate information to returnBB of function
-                    Function *callee = BBFuncTable[B];
-                    ischanged |= UnionCAPArrays(BBCAPTable_out[funcReturnBB[callee]],
-                                                BBCAPTable_out[B]);
-                }
 
-                // if it's a Priv Call BB, Propagate privilege to the in of BB
-                if (BBCAPTable.find(B) != BBCAPTable.end()) {
-                    ischanged |= UnionCAPArrays(BBCAPTable_in[B], BBCAPTable[B]);
-                    //ischangedFunc |= ischanged;
-                } else if (calledFromExternalCode.count (B->getParent())) {
+                    // if it's a Priv Call BB, Propagate privilege to the in of BB
+                    if (BBCAPTable.find(B) != BBCAPTable.end()) {
+                        bbchanged |= UnionCAPArrays(BBCAPTable_in[B], BBCAPTable[B]);
+                        //ischangedFunc |= bbchanged;
+                    } else if (calledFromExternalCode.count (B->getParent())) {
+                        //
+                        // If the basic block belongs to a function that is called
+                        // from external code, propgate information from the
+                        // external calling node in the call graph.
+                        //
+                        bbchanged |= UnionCAPArrays(BBCAPTable_out[B],
+                                                    FuncUseCAPTable[callsNodeFunc]);
+                    }
+
+                    // propagate from all its successors
+                    TerminatorInst *BBTerm = B->getTerminator();
+
+                    for (unsigned BSI = 0, BSE = BBTerm->getNumSuccessors(); 
+                         BSI != BSE; ++ BSI) {
+                        BasicBlock *SuccessorBB = BBTerm->getSuccessor(BSI);
+                        assert(SuccessorBB && "Successor BB is NULL!");
+                        bbchanged |= UnionCAPArrays(BBCAPTable_out[B], 
+                                                    BBCAPTable_in[SuccessorBB]);
+                        // ischangedFunc |= bbchanged;
+                    }
+
+                    // propagate live info from out[B] to in[B] for each BB
+                    bbchanged |= UnionCAPArrays(BBCAPTable_in[B], BBCAPTable_out[B]);
+
                     //
-                    // If the basic block belongs to a function that is called
-                    // from external code, propgate information from the
-                    // external calling node in the call graph.
+                    // If we changed any live in/live out information, update the flag
+                    // that indicates that we changed information while iterating over
+                    // all functions.
                     //
-                    ischanged |= UnionCAPArrays(BBCAPTable_out[B],
-                                                FuncUseCAPTable[callsNodeFunc]);
-                }
-
-                // propagate from all its successors
-                TerminatorInst *BBTerm = B->getTerminator();
-
-                for (unsigned BSI = 0, BSE = BBTerm->getNumSuccessors(); 
-                     BSI != BSE; ++ BSI) {
-                    BasicBlock *SuccessorBB = BBTerm->getSuccessor(BSI);
-                    assert(SuccessorBB && "Successor BB is NULL!");
-                    ischanged |= UnionCAPArrays(BBCAPTable_out[B], 
-                                                BBCAPTable_in[SuccessorBB]);
-                    // ischangedFunc |= ischanged;
-                }
-                // propagate live info from out[B] to in[B] for each BB
-                ischanged |= UnionCAPArrays(BBCAPTable_in[B], BBCAPTable_out[B]);
-            } // iterate all BBs
-
+                    ischanged |= bbchanged;
+                } // iterate all BBs
+            }
         } // iterate all functions
     } while (ischanged); // main loop
 
