@@ -24,6 +24,7 @@
 #include <utility>
 #include <algorithm>
 #include <array>
+#include <list>
 #include <vector>
 #include <map>
 
@@ -95,6 +96,14 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
             if (F == NULL || F->empty()) { continue; }
 
             //
+            // Create a list of basic blocks in post order.
+            //
+            std::list<BasicBlock *> BlockSet;
+            for (auto BI = F->begin(), BE = F->end(); BI != BE; ++BI) {
+                BlockSet.insert (BlockSet.begin(), BI);
+            }
+
+            //
             // Iterate through all BBs for information propagation
             // Traversing BBs in reverse order now because it's closer to
             // topologically reverse order of how BBs are arranged in LLVM, 
@@ -107,9 +116,9 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
                 // has changed.
                 //
                 bbchanged = false;
-                Function::iterator BI = F->begin(), BBegin = F->end();
-                for (; BI != BBegin; ++BI) {
-                    BasicBlock *B = dyn_cast<BasicBlock>(BI);
+                for (auto BI = BlockSet.begin(), BBegin = BlockSet.end();
+                     BI != BBegin; ++BI) {
+                    BasicBlock *B = dyn_cast<BasicBlock>(*BI);
                     if (B == NULL) { continue; }
 
                     // ---------------------------------------------------------- //
