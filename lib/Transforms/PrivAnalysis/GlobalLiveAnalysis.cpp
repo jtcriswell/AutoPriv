@@ -369,11 +369,10 @@ void GlobalLiveAnalysis::dumpTable()
         BasicBlock *B = bi->first;
         CAPArray_t &CAPArray_drop = bi->second;
         ++count;
-        errs() << "BB" << count
-               << " drop End " << B->getParent()->getName() << ":  \t";
+        errs() << "Drop End " << B->getParent()->getName() << ":";
         for (int i = 0; i < CAP_TOTALNUM; ++i) {
             if (CAPArray_drop & ((uint64_t) 1 << i)){
-                errs() << i << "\t";
+                errs() << i << ":";
             }
         }
         errs() << "\n";
@@ -385,11 +384,10 @@ void GlobalLiveAnalysis::dumpTable()
         BasicBlock *B = bi->first;
         CAPArray_t &CAPArray_drop = bi->second;
         ++count;
-        errs() << "BB" << count
-               << " drop Start " << B->getParent()->getName() << ":  \t";
+        errs() << "Drop Start " << B->getParent()->getName() << ":";
         for (unsigned int i = 0; i < CAP_TOTALNUM; ++i) {
             if(CAPArray_drop & ((uint64_t) 1 << i)){
-                errs() << i << "\t";
+                errs() << i << ":";
             }
         }
         errs() << "\n";
