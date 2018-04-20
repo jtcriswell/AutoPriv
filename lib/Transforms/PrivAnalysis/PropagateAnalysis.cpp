@@ -21,6 +21,7 @@
 #include <vector>
 #include <map>
 #include <stack>
+#include <set>
 
 using namespace llvm;
 using namespace dsa;
@@ -107,7 +108,7 @@ void PropagateAnalysis::Propagate(Module &M)
     CallGraphNode* callsNode = CG.getCallsExternalNode();
     CallGraphNode* callingNode = CG.getExternalCallingNode();
     callsNodeFunc = InsertDummyFunc(M, "CallsExternNode");
-    callingNodeFunc = InsertDummyFunc(M, "CallsExternNode");
+    callingNodeFunc = InsertDummyFunc(M, "CallingExternNode");
     FuncCAPTable[callsNodeFunc] = {};
     FuncCAPTable[callingNodeFunc] = {};
 
@@ -116,6 +117,8 @@ void PropagateAnalysis::Propagate(Module &M)
     // TODO: Could be using FuncCAPTable directly?
     CopyTableKeys(FuncCAPTable_in, FuncCAPTable);
     CopyTableKeys(FuncCAPTable_out, FuncCAPTable);
+
+
 
     // Keep iterating until converged
     do {
@@ -214,11 +217,13 @@ void PropagateAnalysis::Propagate(Module &M)
 
     } while (ischanged); // main loop
 
+
     // Erase dummy function nodes. Restore function-CAPArray table
     // FuncCAPTable_in.erase(callsNodeFunc);
     // FuncCAPTable_in.erase(callingNodeFunc);
 
     FuncCAPTable = FuncCAPTable_in;
+    
 
     //
     // Record which functions are called by external code.
@@ -252,6 +257,43 @@ void PropagateAnalysis::print(raw_ostream &O, const Module *M) const
     }
 }
 
+// print out information about the call graph
+void PropagateAnalysis::printCG(CallGraph &CG) const {
+    std::set<Function *> funcSet;
+
+    for (CallGraph::iterator cgi = CG.begin(); cgi != CG.end(); cgi++) {
+        CallGraphNode *node = cgi->second;
+        Function *f = node->getFunction();
+
+        funcSet.insert(f);
+        
+        if (f == NULL) errs() << "NULL's callees: ";
+        else errs() << f->getName() << "'s callees: ";
+        printCallees(*node);
+    }
+
+    /* prints out all functions in the CG */
+    errs() << "All functions in the CG: \n";
+    for (Function *f : funcSet) {
+        if (f != NULL) errs() << f->getName() << "\n";
+        else errs() << "NULL\n";
+    }
+
+}
+
+// print all callees of a CallGraphNode
+void PropagateAnalysis::printCallees(CallGraphNode &CGN) const {
+    // print out all functions' callees
+    for (CallGraphNode::iterator cgni = CGN.begin(); cgni != CGN.end(); cgni++) {
+        CallGraphNode *calleeNode = cgni->second;
+        Function *callee = calleeNode->getFunction();
+        if (callee != NULL) {
+            errs() << callee->getName() << " ";
+        }
+    }
+    errs() << "\n";
+
+}
 
 // register pass
 char PropagateAnalysis::ID = 0;
