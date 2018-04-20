@@ -133,8 +133,8 @@ void DSAExternAnalysis::saveToMappings(CallTargetFinder<TDDataStructures> &CTF)
     }
 
     // DEBUG
-    fprintf(stderr, "Complete ratio is %.2f%%\n", 
-            100*(float)(callgraphMap.size())/(float)(callsToExternNode.size()));
+    /* fprintf(stderr, "Complete ratio is %.2f%%\n", */ 
+    /*         100*(float)(callgraphMap.size())/(float)(callsToExternNode.size())); */
 
 }
 
