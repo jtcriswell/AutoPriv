@@ -65,6 +65,11 @@ public:
 
     // Print out information for debugging purposes
     void print(raw_ostream &O, const Module *M) const;
+
+    // print out the calling relations in the call graph
+    void printCG(CallGraph &CG) const;
+    // a helper function for printCG
+    void printCallees(CallGraphNode &CGN) const;
 private:
     // Insert dummy function
     static Function *InsertDummyFunc(Module &M, const StringRef name); 
