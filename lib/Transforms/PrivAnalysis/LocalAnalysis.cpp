@@ -38,8 +38,8 @@ bool LocalAnalysis::doInitialization(Module &M)
 //        CAParray - the array of capability to save to
 void LocalAnalysis::RetrieveAllCAP(CallInst *CI, CAPArray_t &CAPArray)
 {
-    int numArgs = (int) CI->getNumArgOperands();
     assert(CI != NULL && "The CallInst is NULL!\n");
+    int numArgs = (int) CI->getNumArgOperands();
 
     // Note: Skip the first param of priv_lower for it's num of args
     for (int i = 1; i < numArgs; ++i) {
@@ -68,6 +68,7 @@ bool LocalAnalysis::runOnModule(Module &M)
 
     // Protector: didn't find any function TARGET_FUNC
     assert(F && "Didn't find function PRIV_LOWER function");
+    /* if (F == NULL) return false; */
 
     // Find all user instructions of function in the module
     for (Value::user_iterator UI = F->user_begin(), UE = F->user_end();
