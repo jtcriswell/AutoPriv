@@ -13,18 +13,24 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/Support/raw_ostream.h"
 
 
-#include <map>
 #include <cstdint>
+#include <map>
+#include <set>
+#include <vector>
 
 #include "ADT.h"
-/* #include "LocalAnalysis.h" */
-/* #include "PropagateAnalysis.h" */
-/* #include "GlobalLiveAnalysis.h" */
 
-#define PRIV_REMOVE "priv_remove"
+#define MAIN_FUNC "main"
+#define PRIV_REMOVE_FUNC "priv_remove"
+#define INIT_COUNT_FUNC "initDynCount"
+#define ADD_BB_LOI_FUNC "addBBLOI"
+#define ADD_LOI_FUNC "addLOI"
+#define REPORT_PRIV_DSTR_FUNC "reportPrivDistr"
+
 
 namespace llvm {
 namespace dynPrivDstr {
@@ -35,11 +41,33 @@ public:
     // this Module
     Module *m;
 
+    // constructor
     DynPrivDstr();
 
     virtual bool runOnModule(Module &M);
 
+
 private:
+    // get initial available privilege set 
+    uint64_t getInitialPrivSet(Module &M);
+
+    // get basic blocks that have priv_remove call
+    void getFuncUserBB(Function *f, std::set<BasicBlock *> &bbs);
+
+    // construct the prototype of reportCount function
+    void insertInitDynCountFunc(Module &M);
+
+    // construct the prototype of initDynCount function
+    Function *getAddDynCountFunc(Module &M);
+
+    // construct the prototype of addBBLOI function
+    Function *getAddBBLOIFunc(Module &M);
+    
+    // construct the prototype of addLOI function
+    Function *getReportPrivDstrFunc(Module &M);
+
+    
+
     // for debugging purpose
     void print(raw_ostream &O) const;
 };  // end of struct DynPrivDstr
