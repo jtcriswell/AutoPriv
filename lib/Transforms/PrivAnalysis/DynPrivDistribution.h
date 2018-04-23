@@ -28,7 +28,7 @@
 #define PRIV_REMOVE_FUNC "priv_remove"
 #define INIT_COUNT_FUNC "initDynCount"
 #define ADD_BB_LOI_FUNC "addBBLOI"
-#define ADD_LOI_FUNC "addLOI"
+#define ADD_PRIV_RM_LOI_FUNC "addPrivRmLOI"
 #define REPORT_PRIV_DSTR_FUNC "reportPrivDistr"
 
 
@@ -54,17 +54,17 @@ private:
     // get basic blocks that have priv_remove call
     void getFuncUserBB(Function *f, std::set<BasicBlock *> &bbs);
 
-    // construct the prototype of reportCount function
+    // construct and insert call to initDynCount function
     void insertInitDynCountFunc(Module &M);
 
-    // construct the prototype of initDynCount function
-    Function *getAddDynCountFunc(Module &M);
+    // construct and insert call to addPrivRmLOI function
+    void insertAddPrivRmLOIFunc(Module &M, uint64_t LOI, uint64_t removedPriv);
 
-    // construct the prototype of addBBLOI function
-    Function *getAddBBLOIFunc(Module &M);
+    // construct and insert call to addBBLOI function
+    void insertAddBBLOIFunc(Module &M, BasicBlock &BB);
     
-    // construct the prototype of addLOI function
-    Function *getReportPrivDstrFunc(Module &M);
+    // construct and insert call to reportPrivDistr function
+    void insertReportPrivDstrFunc(Module &M);
 
     
 
