@@ -68,7 +68,6 @@ bool LocalAnalysis::runOnModule(Module &M)
 
     // Protector: didn't find any function TARGET_FUNC
     assert(F && "Didn't find function PRIV_LOWER function");
-    /* if (F == NULL) return false; */
 
     // Find all user instructions of function in the module
     for (Value::user_iterator UI = F->user_begin(), UE = F->user_end();
