@@ -48,6 +48,9 @@ public:
 
 
 private:
+    // get privilege set from a privilege primitive function call
+    uint64_t getPrivSetFromPrivPrimitives(CallInst *CI) const;
+
     // get initial available privilege set 
     uint64_t getInitialPrivSet(Module &M);
 
@@ -58,10 +61,10 @@ private:
     void insertInitDynCountFunc(Module &M);
 
     // construct and insert call to addPrivRmLOI function
-    void insertAddPrivRmLOIFunc(Module &M, uint64_t LOI, uint64_t removedPriv);
+    void insertAddPrivRmLOIFunc(Module &M, Instruction *I, uint32_t LOI, uint64_t removedPriv);
 
     // construct and insert call to addBBLOI function
-    void insertAddBBLOIFunc(Module &M, BasicBlock &BB);
+    void insertAddBBLOIFunc(Module &M, BasicBlock &BB, uint32_t LOI);
     
     // construct and insert call to reportPrivDistr function
     void insertReportPrivDstrFunc(Module &M);
