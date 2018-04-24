@@ -29,7 +29,8 @@
 #define INIT_COUNT_FUNC "initDynCount"
 #define ADD_BB_LOI_FUNC "addBBLOI"
 #define ADD_PRIV_RM_LOI_FUNC "addPrivRmLOI"
-#define REPORT_PRIV_DSTR_FUNC "reportPrivDistr"
+#define REPORT_PRIV_DSTR_FUNC "reportPrivDstr"
+#define ATEXIT_FUNC "atexit"
 
 
 namespace llvm {
@@ -38,14 +39,10 @@ struct DynPrivDstr : public ModulePass {
 public:
     static char ID;
 
-    // this Module
-    Module *m;
-
     // constructor
     DynPrivDstr();
 
     virtual bool runOnModule(Module &M);
-
 
 private:
     // get privilege set from a privilege primitive function call
@@ -66,13 +63,11 @@ private:
     // construct and insert call to addBBLOI function
     void insertAddBBLOIFunc(Module &M, BasicBlock &BB, uint32_t LOI);
     
-    // construct and insert call to reportPrivDistr function
-    void insertReportPrivDstrFunc(Module &M);
-
-    
+    // construct and insert call to atexit function
+    void insertAtexitFunc(Module &M);
 
     // for debugging purpose
-    void print(raw_ostream &O) const;
+    void print(raw_ostream &O, Module &M) const;
 };  // end of struct DynPrivDstr
 }  // end of namespace dynPrivDstr
 }  // end of namespace llvm

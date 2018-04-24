@@ -64,8 +64,9 @@ bool DynPrivDstr::runOnModule(Module &M) {
         }
     }
 
-    m = &M;
-
+    // insert the reportPrivDistr function
+    insertAtexitFunc(M);
+    
     return true;  // a transformation pass
 }
 
@@ -94,20 +95,6 @@ uint64_t DynPrivDstr::getInitialPrivSet(Module &M) {
         assert(CI != NULL && "The CallInst is NULL!\n");
 
         initialPriv |= getPrivSetFromPrivPrimitives(CI);
-
-        /* unsigned int numArgs =  CI->getNumArgOperands(); */
-        /* // Note: Skip the first param of priv_lower for it's num of args */
-        /* for (unsigned int i = 1; i < numArgs; ++i) { */
-        /*     // retrieve integer value */
-        /*     Value *v = CI->getArgOperand(i); */
-        /*     ConstantInt *I = dyn_cast<ConstantInt>(v); */
-        /*     /1* unsigned int iarg = I->getZExtValue(); *1/ */
-        /*     uint64_t iarg = I->getZExtValue(); */
-
-        /*     // Add it to the array */
-        /*     initialPriv |= ((uint64_t)1u << iarg); */
-        /* } */
-
     }
     
     return initialPriv;
@@ -151,7 +138,6 @@ void DynPrivDstr::insertInitDynCountFunc(Module &M) {
     // abort if the construction failed
     assert(initDynCountFunc && "Constructing initDynCount function failed!\n");
 
-    //
     // step 2: insert this function call with the initialPriv at the begining of main function
     std::vector<Value *> args;  // arguments
     uint64_t initialPriv = getInitialPrivSet(M);  // get initial privilege set
@@ -215,7 +201,6 @@ void DynPrivDstr::insertAddBBLOIFunc(Module &M, BasicBlock &BB, uint32_t LOI) {
     // abort if the construction failed
     assert(addBBLOIFunc && "Constructing addBBLOI function failed!\n");
 
-
     // step 2: insert the function call before the last instruction of this basic block
     std::vector<Value *> args;
     ConstantInt *BBLOI = ConstantInt::get(int32Type, LOI);  // BBLOI: BB's size
@@ -227,14 +212,40 @@ void DynPrivDstr::insertAddBBLOIFunc(Module &M, BasicBlock &BB, uint32_t LOI) {
 }
 
 
-// construct the prototype of addLOI function
-void DynPrivDstr::insertReportPrivDstrFunc(Module &M) {
+/*
+ * This function constructs and inserts the atexit() function at the beginning of the target program.
+ * */
+void DynPrivDstr::insertAtexitFunc(Module &M) {
+    // firstly, construct the prototype of reportPrivDistr function
+    Type *voidType = Type::getVoidTy(M.getContext());
+    // declare the function prototype
+    FunctionType *reportPrivDistrFuncType = FunctionType::get(voidType, false);
+    // create the function prototype
+    Function *reportPrivDistrFunc = dyn_cast<Function>(M.getOrInsertFunction(REPORT_PRIV_DSTR_FUNC, reportPrivDistrFuncType));
+    // abort if the construction failed
+    assert(reportPrivDistrFunc && "Constructing reportPrivDistr function failed!\n");
+    
+    // construct the atexit function prototype
+    std::vector<Type *> params;
+    params.push_back(reportPrivDistrFuncType->getPointerTo());
+    IntegerType *int32Type = IntegerType::get(M.getContext(), 32); // return type of atexit: int
+    FunctionType *atexitFuncType = FunctionType::get(int32Type, ArrayRef<Type *>(params), false);
+    Function *atexitFunc = dyn_cast<Function>(M.getOrInsertFunction(ATEXIT_FUNC, atexitFuncType));
+    assert(atexitFunc && "Constructing atexitFunc function failed!\n");
+
+    // insert atexit at the beginning of the program
+    std::vector<Value *> args;
+    args.push_back(reportPrivDistrFunc);
+    
+    // insert the call
+    Function *mainFunc = M.getFunction(MAIN_FUNC);
+    CallInst::Create(atexitFunc, ArrayRef<Value *>(args), "", mainFunc->getEntryBlock().getFirstNonPHI());
 }
 
 
 // for the purpose of debugging
-void DynPrivDstr::print(raw_ostream &O) const {
-    for (Module::iterator mi = m->begin(); mi != m->end(); mi++) {
+void DynPrivDstr::print(raw_ostream &O, Module &M) const {
+    for (Module::iterator mi = M.begin(); mi != M.end(); mi++) {
         errs() << mi->getName() << " has " << mi->size() << " basic blocks\n";
         for (Function::iterator fi = mi->begin(); fi != mi->end(); fi ++) {
         }
