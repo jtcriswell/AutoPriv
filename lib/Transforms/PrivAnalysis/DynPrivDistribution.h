@@ -25,6 +25,7 @@
 #include "ADT.h"
 
 #define MAIN_FUNC "main"
+#define EXECVE_FUNC "execve"
 #define PRIV_REMOVE_FUNC "priv_remove"
 #define INIT_COUNT_FUNC "initDynCount"
 #define ADD_BB_LOI_FUNC "addBBLOI"
@@ -63,8 +64,8 @@ private:
     // construct and insert call to addBBLOI function
     void insertAddBBLOIFunc(Module &M, BasicBlock &BB, uint32_t LOI);
     
-    // construct and insert call to atexit function
-    void insertAtexitFunc(Module &M);
+    // construct and insert call to reportPrivDstr function
+    void insertReportPrivDstrFunc(Module &M);
 
     // for debugging purpose
     void print(raw_ostream &O, Module &M) const;
