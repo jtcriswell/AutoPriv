@@ -129,6 +129,8 @@ uint64_t DynPrivDstr::getInitialPrivSet(Module &M) {
  * that contain the CallInst in a set.
  * */
 void DynPrivDstr::getFuncUserBB(Function *f, std::set<BasicBlock *> &bbs) {
+    if (f == NULL) return;
+
     for (Value::user_iterator fui = f->user_begin(); fui != f->user_end(); fui++) {
         CallInst *caller = dyn_cast<CallInst>(*fui);
         if (caller == NULL || f != caller->getCalledFunction()) {
