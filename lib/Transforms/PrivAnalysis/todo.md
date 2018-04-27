@@ -1,4 +1,11 @@
-# A list of things that have better to be done but not in a hurry.
+## issues that need to be solved before submission of the paper
+
+#### Line of Instructions in a Basic Block
+Two special instructions: **PHINode** and **unreachable**.
+Currently we count **unreachable** bu not **PHINode**.
+Any change needed?
+
+## A list of things that have better to be done but not in a hurry.
 
 #### remove accidentally added priveleges to the binary
 If the administrator of the system accidentally added unneeded capabilities
