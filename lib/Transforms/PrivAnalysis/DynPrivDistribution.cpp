@@ -55,11 +55,11 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
     for (Module::iterator mi = M.begin(); mi != M.end(); mi++) {
         for (Function::iterator fi = mi->begin(); fi != mi->end(); fi++) {
             BasicBlock *BB = &*fi;
+            uint32_t LOI = 0;
             if (privRmBBs.find(BB) != privRmBBs.end() || 
                     execveBBs.find(BB) != execveBBs.end() ||
                     forkBBs.find(BB) != forkBBs.end()) {
                 // this basic block has at least one special call
-                uint32_t LOI = 0;
                 for (BasicBlock::iterator bbi = BB->begin(); bbi != BB->end(); bbi++) {
                     // JZ: I don't like variables names like I, CI, func, 
                     // but sometimes it's really hard to find good names!
@@ -85,11 +85,16 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
                     } 
                     LOI++;
                 }
-                insertAddBBLOIFunc(M, BB->getTerminator(), LOI);
             } else {
-                // this basic block doesn't have any call to priv_remove
-                // insert a addBBLOI at the end of this BB
-                insertAddBBLOIFunc(M, BB->getTerminator(), BB->size());
+                // this basic block doesn't have any special calls
+                LOI = BB->size();
+            }
+            Instruction *targetInst = BB->getTerminator();
+            if (dyn_cast<UnreachableInst>(targetInst) != NULL) {
+                // the last instruction of this BB is an unreachable
+                insertAddBBLOIFunc(M, targetInst, LOI - 1);
+            } else {
+                insertAddBBLOIFunc(M, targetInst, LOI);
             }
         }
     }
