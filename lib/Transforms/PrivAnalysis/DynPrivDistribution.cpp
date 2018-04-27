@@ -23,53 +23,77 @@ DynPrivDstr::DynPrivDstr() : ModulePass(ID) {
 
 // runOnFunction
 bool DynPrivDstr::runOnModule(Module &M) {
-    // get all basic blocks that has at least one priv_remove call
-    std::set<BasicBlock *> targetBBs;
-    getFuncUserBB(M.getFunction(PRIV_REMOVE_FUNC), targetBBs);
+    // insert addBBLOI or addPrivRmLOI at proper places
+    insertAddLOIFunc(M);
+    
+    // insert the initDynCount function at the beginning of the main function
+    insertInitDynCountFunc(M);
 
+    // insert the reportPrivDistr function
+    insertAtexitFunc(M);
+    
+    return true;  // a transformation pass
+}
+
+/*
+ * This function insert addBBLOI or addPrivRmLOI at proper locations.
+ * There are three special functions calls: priv_remove, execve, and fork
+ * that need extra care. 
+ * If a basic block doesn't have any call to the special functions, 
+ * then just insert an addBBLOI at the end (before the last IR) of the BB;
+ * 
+ * */
+void DynPrivDstr::insertAddLOIFunc(Module &M) {
+    std::set<BasicBlock *> privRmBBs;  // BBs that have priv_remove
+    std::set<BasicBlock *> execveBBs;  // BBs that have execve
+    std::set<BasicBlock *> forkBBs;    // BBs that have fork
+    getFuncUserBB(M.getFunction(PRIV_REMOVE_FUNC), privRmBBs);
+    getFuncUserBB(M.getFunction(EXECVE_FUNC), execveBBs);
+    getFuncUserBB(M.getFunction(FORK_FUNC), forkBBs);
 
     // iterate over all basic blocks 
     for (Module::iterator mi = M.begin(); mi != M.end(); mi++) {
         for (Function::iterator fi = mi->begin(); fi != mi->end(); fi++) {
             BasicBlock *BB = &*fi;
-            if (targetBBs.find(BB) != targetBBs.end()) {
-                // this basic block has at least one priv_remove call
+            if (privRmBBs.find(BB) != privRmBBs.end() || 
+                    execveBBs.find(BB) != execveBBs.end() ||
+                    forkBBs.find(BB) != forkBBs.end()) {
+                // this basic block has at least one special call
                 uint32_t LOI = 0;
                 for (BasicBlock::iterator bbi = BB->begin(); bbi != BB->end(); bbi++) {
                     // JZ: I don't like variables names like I, CI, func, 
                     // but sometimes it's really hard to find good names!
-                    Instruction *I = &*bbi;
-                    if (isa<PHINode>(I)) continue;  // skip PHINode
-                    CallInst *CI = dyn_cast<CallInst>(I);
+                    /* if (isa<PHINode>(I)) continue;  // skip PHINode */
+                    CallInst *CI = dyn_cast<CallInst>(&*bbi);
                     if (CI != NULL) {
                         Function *func = CI->getCalledFunction();
                         if (func != NULL) {
                             if (func->getName().equals(PRIV_REMOVE_FUNC)) {
                                 insertAddPrivRmLOIFunc(M, CI, LOI + 1, getPrivSetFromPrivPrimitives(CI));
                                 LOI = -1;  // regard the call to priv_remove in the previous priv set
+                            } else if (func->getName().equals(EXECVE_FUNC)) {
+                                // insert an addBBLOI and a reportPrivDistr
+                                insertAddBBLOIFunc(M, CI, LOI + 1);
+                                CallInst::Create(getReportPrivDstrFunc(M), "", CI);
+                                LOI = -1;
+                            } else if (func->getName().equals(FORK_FUNC)) {
+                                // insert an addBBLOI
+                                insertAddBBLOIFunc(M, CI, LOI + 1);
+                                LOI = -1;
                             }
                         }
                     } 
                     LOI++;
                 }
-                insertAddBBLOIFunc(M, *BB, LOI);
+                insertAddBBLOIFunc(M, BB->getTerminator(), LOI);
             } else {
                 // this basic block doesn't have any call to priv_remove
                 // insert a addBBLOI at the end of this BB
-                insertAddBBLOIFunc(M, *BB, BB->size());
+                insertAddBBLOIFunc(M, BB->getTerminator(), BB->size());
             }
         }
     }
-
-    // insert the initDynCount function at the beginning of the main function
-    insertInitDynCountFunc(M);
-
-    // insert the reportPrivDistr function
-    insertReportPrivDstrFunc(M);
-    
-    return true;  // a transformation pass
 }
-
 
 // get privilege set from a privilege primitive function call
 uint64_t DynPrivDstr::getPrivSetFromPrivPrimitives(CallInst *CI) const {
@@ -187,7 +211,7 @@ void DynPrivDstr::insertAddPrivRmLOIFunc(Module &M, Instruction *I, uint32_t LOI
  *
  * Please see the code of dynPrivDstr lib for more details of the addPrivRmLOI function.
  * */
-void DynPrivDstr::insertAddBBLOIFunc(Module &M, BasicBlock &BB, uint32_t LOI) {
+void DynPrivDstr::insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI) {
     // step1: construct the prototype for the addBBLOI function
     std::vector<Type *> params;
     IntegerType *int32Type = IntegerType::get(M.getContext(), 32); // parameter: LOI
@@ -207,7 +231,7 @@ void DynPrivDstr::insertAddBBLOIFunc(Module &M, BasicBlock &BB, uint32_t LOI) {
     args.push_back(BBLOI);
 
     // insert the call
-    CallInst::Create(addBBLOIFunc, ArrayRef<Value *>(args), "", BB.getTerminator());
+    CallInst::Create(addBBLOIFunc, ArrayRef<Value *>(args), "", insertBefore);
 }
 
 
@@ -217,42 +241,41 @@ void DynPrivDstr::insertAddBBLOIFunc(Module &M, BasicBlock &BB, uint32_t LOI) {
  *
  * A corner case is that a basic block has both priv_remove and execve. 
  * */
-void DynPrivDstr::insertReportPrivDstrFunc(Module &M) {
-    // construct the prototype of reportPrivDistr function
+void DynPrivDstr::insertAtexitFunc(Module &M) {
+    // create reportPrivDstr prototype
     Type *voidType = Type::getVoidTy(M.getContext());
-    // declare the function prototype
-    FunctionType *reportPrivDistrFuncType = FunctionType::get(voidType, false);
-    // create the function prototype
-    Function *reportPrivDistrFunc = dyn_cast<Function>(M.getOrInsertFunction(REPORT_PRIV_DSTR_FUNC, reportPrivDistrFuncType));
-    // abort if the construction failed
-    assert(reportPrivDistrFunc && "Constructing reportPrivDistr function failed!\n");
-    
+    FunctionType *reportPrivDstrFuncType = FunctionType::get(voidType, false);
+
     // construct the atexit function prototype
-    std::vector<Type *> params;
-    params.push_back(reportPrivDistrFuncType->getPointerTo());
+    std::vector<Type *> params;  // for parameter of atexit
+    params.push_back(reportPrivDstrFuncType->getPointerTo());
     IntegerType *int32Type = IntegerType::get(M.getContext(), 32); // return type of atexit: int
     FunctionType *atexitFuncType = FunctionType::get(int32Type, ArrayRef<Type *>(params), false);
     Function *atexitFunc = dyn_cast<Function>(M.getOrInsertFunction(ATEXIT_FUNC, atexitFuncType));
     assert(atexitFunc && "Constructing atexitFunc function failed!\n");
+
     std::vector<Value *> args;  //args for atexit
-    args.push_back(reportPrivDistrFunc);
+    args.push_back(getReportPrivDstrFunc(M));
     
     // insert the call to atexit
     Function *mainFunc = M.getFunction(MAIN_FUNC);
     CallInst::Create(atexitFunc, ArrayRef<Value *>(args), "", mainFunc->getEntryBlock().getFirstNonPHI());
-
-    Function *execveFunc = M.getFunction(EXECVE_FUNC);
-    if (execveFunc != NULL) {
-        // if this program calls execve, then we need insert atexit before execve
-        for (Value::user_iterator UI = execveFunc->user_begin(); UI != execveFunc->user_end(); UI++) {
-            CallInst *callToExecve = dyn_cast<CallInst>(*UI);
-            if (callToExecve == NULL) continue;
-            CallInst::Create(reportPrivDistrFunc,  "", callToExecve);
-            // before inserting reportPrivDistr, insert an counter function
-        }
-    }
 }
 
+// a helper method for insertReportPrivDstrFunc and insertAtexitFunc
+Function *DynPrivDstr::getReportPrivDstrFunc(Module &M) {
+    // construct the prototype of reportPrivDistr function
+    Type *voidType = Type::getVoidTy(M.getContext());
+    // declare the function prototype
+    FunctionType *reportPrivDstrFuncType = FunctionType::get(voidType, false);
+    // create the function prototype
+    Constant *targetFunc = M.getOrInsertFunction(REPORT_PRIV_DSTR_FUNC, reportPrivDstrFuncType);
+    Function *reportPrivDstrFunc = dyn_cast<Function>(targetFunc);
+    // abort if the construction failed
+    assert(reportPrivDstrFunc && "Constructing reportPrivDistr function failed!\n");
+    
+    return reportPrivDstrFunc;
+}
 
 // for the purpose of debugging
 void DynPrivDstr::print(raw_ostream &O, Module &M) const {

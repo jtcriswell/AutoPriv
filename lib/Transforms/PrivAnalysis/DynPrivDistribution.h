@@ -26,6 +26,7 @@
 
 #define MAIN_FUNC "main"
 #define EXECVE_FUNC "execve"
+#define FORK_FUNC "fork"
 #define PRIV_REMOVE_FUNC "priv_remove"
 #define INIT_COUNT_FUNC "initDynCount"
 #define ADD_BB_LOI_FUNC "addBBLOI"
@@ -55,6 +56,9 @@ private:
     // get basic blocks that have priv_remove call
     void getFuncUserBB(Function *f, std::set<BasicBlock *> &bbs);
 
+    // insert addLOT functions 
+    void insertAddLOIFunc(Module &M);
+
     // construct and insert call to initDynCount function
     void insertInitDynCountFunc(Module &M);
 
@@ -62,10 +66,13 @@ private:
     void insertAddPrivRmLOIFunc(Module &M, Instruction *I, uint32_t LOI, uint64_t removedPriv);
 
     // construct and insert call to addBBLOI function
-    void insertAddBBLOIFunc(Module &M, BasicBlock &BB, uint32_t LOI);
-    
-    // construct and insert call to reportPrivDstr function
-    void insertReportPrivDstrFunc(Module &M);
+    void insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI);
+
+    // construct and insert call to atexit function
+    void insertAtexitFunc(Module &M);
+
+    // a helper method for insertReportPrivDstrFunc and insertAtexitFunc
+    Function *getReportPrivDstrFunc(Module &M);
 
     // for debugging purpose
     void print(raw_ostream &O, Module &M) const;
