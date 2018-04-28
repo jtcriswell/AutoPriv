@@ -41,7 +41,13 @@ bool DynPrivDstr::runOnModule(Module &M) {
  * that need extra care. 
  * If a basic block doesn't have any call to the special functions, 
  * then just insert an addBBLOI at the end (before the last IR) of the BB;
- * 
+ * if it calls priv_remove, then insert a addPrivRmLOI() before each such call;
+ * if it calls execve, then insert addBBLOI and reportPrivDistr before each such call;
+ * if it calls fork, then insert addBBLOI before each such call.
+ *
+ * Some BB has an UnreachableInst as the last instruction; in these cases,
+ * insert the count instrunction before the real executed last instruction; 
+ * otherwise the count function won't get executed.
  * */
 void DynPrivDstr::insertAddLOIFunc(Module &M) {
     std::set<BasicBlock *> privRmBBs;  // BBs that have priv_remove
@@ -55,7 +61,7 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
     for (Module::iterator mi = M.begin(); mi != M.end(); mi++) {
         for (Function::iterator fi = mi->begin(); fi != mi->end(); fi++) {
             BasicBlock *BB = &*fi;
-            uint32_t LOI = 0;
+            uint32_t LOI = 0;   // line of instruction
             if (privRmBBs.find(BB) != privRmBBs.end() || 
                     execveBBs.find(BB) != execveBBs.end() ||
                     forkBBs.find(BB) != forkBBs.end()) {
@@ -63,7 +69,6 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
                 for (BasicBlock::iterator bbi = BB->begin(); bbi != BB->end(); bbi++) {
                     // JZ: I don't like variables names like I, CI, func, 
                     // but sometimes it's really hard to find good names!
-                    /* if (isa<PHINode>(I)) continue;  // skip PHINode */
                     CallInst *CI = dyn_cast<CallInst>(&*bbi);
                     if (CI != NULL) {
                         Function *func = CI->getCalledFunction();
@@ -89,12 +94,14 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
                 // this basic block doesn't have any special calls
                 LOI = BB->size();
             }
-            Instruction *targetInst = BB->getTerminator();
-            if (dyn_cast<UnreachableInst>(targetInst) != NULL) {
-                // the last instruction of this BB is an unreachable
-                insertAddBBLOIFunc(M, targetInst, LOI - 1);
+            Instruction *lastInst = BB->getTerminator();
+            if (isa<UnreachableInst>(lastInst)) {
+                // The last instruction of this BB is an UnreachableInst.
+                // We need insert addBBLOI before the real last executed instruction.
+                Instruction *realLastInst = dyn_cast<Instruction>(lastInst->getPrevNode());
+                insertAddBBLOIFunc(M, realLastInst, LOI - 1);
             } else {
-                insertAddBBLOIFunc(M, targetInst, LOI);
+                insertAddBBLOIFunc(M, lastInst, LOI);
             }
         }
     }
