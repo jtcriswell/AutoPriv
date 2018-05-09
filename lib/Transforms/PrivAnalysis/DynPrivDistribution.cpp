@@ -31,6 +31,8 @@ bool DynPrivDstr::runOnModule(Module &M) {
 
     // insert the reportPrivDistr function
     insertAtexitFunc(M);
+
+    /* insertInitFunc(M); */
     
     return true;  // a transformation pass
 }
@@ -78,12 +80,13 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
                                 LOI = -1;  // regard the call to priv_remove in the previous priv set
                             } else if (func->getName().equals(EXECVE_FUNC)) {
                                 // insert an addBBLOI and a reportPrivDistr
-                                insertAddBBLOIFunc(M, CI, LOI + 1);
+                                insertAddBBLOIFunc(M, CI, LOI + 1, fi->getName());
                                 CallInst::Create(getReportPrivDstrFunc(M), "", CI);
                                 LOI = -1;
                             } else if (func->getName().equals(FORK_FUNC)) {
                                 // insert an addBBLOI
-                                insertAddBBLOIFunc(M, CI, LOI + 1);
+                                insertAddBBLOIFunc(M, CI, LOI + 1, fi->getName());
+                                insertForkHandler(M, CI);
                                 LOI = -1;
                             }
                         }
@@ -99,9 +102,9 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
                 // The last instruction of this BB is an UnreachableInst.
                 // We need insert addBBLOI before the real last executed instruction.
                 Instruction *realLastInst = dyn_cast<Instruction>(lastInst->getPrevNode());
-                insertAddBBLOIFunc(M, realLastInst, LOI - 1);
+                insertAddBBLOIFunc(M, realLastInst, LOI - 1, fi->getName());
             } else {
-                insertAddBBLOIFunc(M, lastInst, LOI);
+                insertAddBBLOIFunc(M, lastInst, LOI, fi->getName());
             }
         }
     }
@@ -225,12 +228,15 @@ void DynPrivDstr::insertAddPrivRmLOIFunc(Module &M, Instruction *I, uint32_t LOI
  *
  * Please see the code of dynPrivDstr lib for more details of the addPrivRmLOI function.
  * */
-void DynPrivDstr::insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI) {
+void DynPrivDstr::insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI, StringRef funcName) {
     // step1: construct the prototype for the addBBLOI function
     std::vector<Type *> params;
     IntegerType *int32Type = IntegerType::get(M.getContext(), 32); // parameter: LOI
     Type *voidType = Type::getVoidTy(M.getContext());  // return type: void
     params.push_back(int32Type);
+
+    /* ArrayType *arrayType = ArrayType::get(IntegerType::get(M.getContext(), 8), funcName.size()); */
+    /* params.push_back(arrayType); */
 
     // declare the function prototype
     FunctionType *addBBLOIFuncType = FunctionType::get(voidType, ArrayRef<Type *>(params), false);
@@ -243,6 +249,16 @@ void DynPrivDstr::insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint3
     std::vector<Value *> args;
     ConstantInt *BBLOI = ConstantInt::get(int32Type, LOI);  // BBLOI: BB's size
     args.push_back(BBLOI);
+
+    /* std::string funcNameStr = funcName.str(); */
+    /* uint8_t funcNameArr[funcName.size() + 1]; */
+    /* for (unsigned int i = 0; i < funcName.size(); i++) { */
+    /*     funcNameArr[i] = (uint8_t)(funcName[i]); */
+    /* } */
+    /* funcNameArr[funcName.size()] = 0; */
+    /* ConstantArray *_funcNameArr = ConstantArray::get(arrayType, ArrayRef<Constant *>(funcNameArr)); */
+    /* args.push_back(_funcNameArr); */
+
 
     // insert the call
     CallInst::Create(addBBLOIFunc, ArrayRef<Value *>(args), "", insertBefore);
@@ -289,6 +305,25 @@ Function *DynPrivDstr::getReportPrivDstrFunc(Module &M) {
     assert(reportPrivDstrFunc && "Constructing reportPrivDistr function failed!\n");
     
     return reportPrivDstrFunc;
+}
+
+// construct and insert call to forkHandler function
+void DynPrivDstr::insertForkHandler(Module &M, Instruction *insertBefore) {
+    Type *voidType = Type::getVoidTy(M.getContext());
+    FunctionType *forkHandlerFuncType = FunctionType::get(voidType, false);
+    Constant *targetFunc = M.getOrInsertFunction("forkHandler", forkHandlerFuncType);
+    Function *forkHandlerFunc = dyn_cast<Function>(targetFunc);
+    CallInst::Create(forkHandlerFunc, "", insertBefore);
+}
+
+// construct and insert call to calledAtStart function
+void DynPrivDstr::insertInitFunc(Module &M) {
+    Type *voidType = Type::getVoidTy(M.getContext());
+    FunctionType *calledAtStartFuncType = FunctionType::get(voidType, false);
+    Constant *targetFunc = M.getOrInsertFunction("calledAtStart", calledAtStartFuncType);
+    Function *calledAtStartFunc = dyn_cast<Function>(targetFunc);
+    Function *mainFunc = M.getFunction(MAIN_FUNC);
+    CallInst::Create(calledAtStartFunc, "", mainFunc->getEntryBlock().getFirstNonPHI());
 }
 
 // for the purpose of debugging

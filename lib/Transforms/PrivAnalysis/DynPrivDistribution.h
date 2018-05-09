@@ -66,10 +66,15 @@ private:
     void insertAddPrivRmLOIFunc(Module &M, Instruction *I, uint32_t LOI, uint64_t removedPriv);
 
     // construct and insert call to addBBLOI function
-    void insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI);
+    void insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI, StringRef funcName);
 
     // construct and insert call to atexit function
     void insertAtexitFunc(Module &M);
+    
+    // construct and insert call to forkHandler function
+    void insertInitFunc(Module &M);
+    // construct and insert call to forkHandler function
+    void insertForkHandler(Module &M, Instruction *insertBefore);
 
     // a helper method for insertReportPrivDstrFunc and insertAtexitFunc
     Function *getReportPrivDstrFunc(Module &M);
