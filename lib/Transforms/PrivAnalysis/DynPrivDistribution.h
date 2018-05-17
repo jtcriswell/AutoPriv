@@ -66,7 +66,7 @@ private:
     void insertAddPrivRmLOIFunc(Module &M, Instruction *I, uint32_t LOI, uint64_t removedPriv);
 
     // construct and insert call to addBBLOI function
-    void insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI, StringRef funcName);
+    void insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI);
 
     // construct and insert call to atexit function
     void insertAtexitFunc(Module &M);

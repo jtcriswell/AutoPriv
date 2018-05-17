@@ -16,6 +16,8 @@ using namespace llvm;
 using namespace llvm::privAnalysis;
 using namespace llvm::dynPrivDstr;
 
+
+
 // constructor
 DynPrivDstr::DynPrivDstr() : ModulePass(ID) {
 }
@@ -44,7 +46,7 @@ bool DynPrivDstr::runOnModule(Module &M) {
  * If a basic block doesn't have any call to the special functions, 
  * then just insert an addBBLOI at the end (before the last IR) of the BB;
  * if it calls priv_remove, then insert a addPrivRmLOI() before each such call;
- * if it calls execve, then insert addBBLOI and reportPrivDistr before each such call;
+ * if it calls execve family functions, then insert addBBLOI and reportPrivDistr before each such call;
  * if it calls fork, then insert addBBLOI before each such call.
  *
  * Some BB has an UnreachableInst as the last instruction; in these cases,
@@ -53,11 +55,16 @@ bool DynPrivDstr::runOnModule(Module &M) {
  * */
 void DynPrivDstr::insertAddLOIFunc(Module &M) {
     std::set<BasicBlock *> privRmBBs;  // BBs that have priv_remove
-    std::set<BasicBlock *> execveBBs;  // BBs that have execve
     std::set<BasicBlock *> forkBBs;    // BBs that have fork
+    std::set<BasicBlock *> execBBs;  // BBs that have execve
     getFuncUserBB(M.getFunction(PRIV_REMOVE_FUNC), privRmBBs);
-    getFuncUserBB(M.getFunction(EXECVE_FUNC), execveBBs);
     getFuncUserBB(M.getFunction(FORK_FUNC), forkBBs);
+
+    // get all basic blocks that call a exec family function
+    std::set<std::string> execFuncs{"execve", "execl", "execlp", "execle", "execv", "execvp", "execvpe" };
+    for (std::string execFunc : execFuncs) {
+        getFuncUserBB(M.getFunction(execFunc), execBBs);
+    }
 
     // iterate over all basic blocks 
     for (Module::iterator mi = M.begin(); mi != M.end(); mi++) {
@@ -65,7 +72,7 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
             BasicBlock *BB = &*fi;
             uint32_t LOI = 0;   // line of instruction
             if (privRmBBs.find(BB) != privRmBBs.end() || 
-                    execveBBs.find(BB) != execveBBs.end() ||
+                    execBBs.find(BB) != execBBs.end() ||
                     forkBBs.find(BB) != forkBBs.end()) {
                 // this basic block has at least one special call
                 for (BasicBlock::iterator bbi = BB->begin(); bbi != BB->end(); bbi++) {
@@ -78,14 +85,14 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
                             if (func->getName().equals(PRIV_REMOVE_FUNC)) {
                                 insertAddPrivRmLOIFunc(M, CI, LOI + 1, getPrivSetFromPrivPrimitives(CI));
                                 LOI = -1;  // regard the call to priv_remove in the previous priv set
-                            } else if (func->getName().equals(EXECVE_FUNC)) {
+                            } else if (execFuncs.find(func->getName()) != execFuncs.end()) {
                                 // insert an addBBLOI and a reportPrivDistr
-                                insertAddBBLOIFunc(M, CI, LOI + 1, fi->getName());
+                                insertAddBBLOIFunc(M, CI, LOI + 1);
                                 CallInst::Create(getReportPrivDstrFunc(M), "", CI);
                                 LOI = -1;
                             } else if (func->getName().equals(FORK_FUNC)) {
                                 // insert an addBBLOI
-                                insertAddBBLOIFunc(M, CI, LOI + 1, fi->getName());
+                                insertAddBBLOIFunc(M, CI, LOI + 1);
                                 insertForkHandler(M, CI);
                                 LOI = -1;
                             }
@@ -102,9 +109,9 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
                 // The last instruction of this BB is an UnreachableInst.
                 // We need insert addBBLOI before the real last executed instruction.
                 Instruction *realLastInst = dyn_cast<Instruction>(lastInst->getPrevNode());
-                insertAddBBLOIFunc(M, realLastInst, LOI - 1, fi->getName());
+                insertAddBBLOIFunc(M, realLastInst, LOI - 1);
             } else {
-                insertAddBBLOIFunc(M, lastInst, LOI, fi->getName());
+                insertAddBBLOIFunc(M, lastInst, LOI);
             }
         }
     }
@@ -152,7 +159,7 @@ void DynPrivDstr::getFuncUserBB(Function *f, std::set<BasicBlock *> &bbs) {
             continue;  // why could this happen???
         } 
 
-        // store this priv_remove call's basic block
+        // store this function call's basic block
         bbs.insert(caller->getParent());
     }
 }
@@ -228,7 +235,7 @@ void DynPrivDstr::insertAddPrivRmLOIFunc(Module &M, Instruction *I, uint32_t LOI
  *
  * Please see the code of dynPrivDstr lib for more details of the addPrivRmLOI function.
  * */
-void DynPrivDstr::insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI, StringRef funcName) {
+void DynPrivDstr::insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI) {
     // step1: construct the prototype for the addBBLOI function
     std::vector<Type *> params;
     IntegerType *int32Type = IntegerType::get(M.getContext(), 32); // parameter: LOI
@@ -249,16 +256,6 @@ void DynPrivDstr::insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint3
     std::vector<Value *> args;
     ConstantInt *BBLOI = ConstantInt::get(int32Type, LOI);  // BBLOI: BB's size
     args.push_back(BBLOI);
-
-    /* std::string funcNameStr = funcName.str(); */
-    /* uint8_t funcNameArr[funcName.size() + 1]; */
-    /* for (unsigned int i = 0; i < funcName.size(); i++) { */
-    /*     funcNameArr[i] = (uint8_t)(funcName[i]); */
-    /* } */
-    /* funcNameArr[funcName.size()] = 0; */
-    /* ConstantArray *_funcNameArr = ConstantArray::get(arrayType, ArrayRef<Constant *>(funcNameArr)); */
-    /* args.push_back(_funcNameArr); */
-
 
     // insert the call
     CallInst::Create(addBBLOIFunc, ArrayRef<Value *>(args), "", insertBefore);
