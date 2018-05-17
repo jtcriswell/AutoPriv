@@ -14,6 +14,3 @@ This can be done after the LocalAnalysis pass is finished when we know
 what privileges are in the permissible set and what privileges are really 
 used by *priv_raise* calls.
 
-#### handle all execve family function calls
-Currently only execve is handled because the current test programs only have
-execve. We need add support to other execve family functions.
