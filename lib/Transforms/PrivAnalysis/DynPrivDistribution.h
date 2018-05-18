@@ -25,7 +25,6 @@
 #include "ADT.h"
 
 #define MAIN_FUNC "main"
-#define EXECVE_FUNC "execve"
 #define FORK_FUNC "fork"
 #define PRIV_REMOVE_FUNC "priv_remove"
 #define INIT_COUNT_FUNC "initDynCount"

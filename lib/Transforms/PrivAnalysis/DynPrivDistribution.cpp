@@ -57,8 +57,11 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
     std::set<BasicBlock *> privRmBBs;  // BBs that have priv_remove
     std::set<BasicBlock *> forkBBs;    // BBs that have fork
     std::set<BasicBlock *> execBBs;  // BBs that have execve
+    std::set<BasicBlock *> exitBBs;  // BBs that have _exit or _EXIT
     getFuncUserBB(M.getFunction(PRIV_REMOVE_FUNC), privRmBBs);
     getFuncUserBB(M.getFunction(FORK_FUNC), forkBBs);
+    getFuncUserBB(M.getFunction("_exit"), exitBBs);
+    getFuncUserBB(M.getFunction("_EXIT"), exitBBs);
 
     // get all basic blocks that call a exec family function
     std::set<std::string> execFuncs{"execve", "execl", "execlp", "execle", "execv", "execvp", "execvpe" };
@@ -73,6 +76,7 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
             uint32_t LOI = 0;   // line of instruction
             if (privRmBBs.find(BB) != privRmBBs.end() || 
                     execBBs.find(BB) != execBBs.end() ||
+                    exitBBs.find(BB) != exitBBs.end() ||
                     forkBBs.find(BB) != forkBBs.end()) {
                 // this basic block has at least one special call
                 for (BasicBlock::iterator bbi = BB->begin(); bbi != BB->end(); bbi++) {
@@ -82,19 +86,23 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
                     if (CI != NULL) {
                         Function *func = CI->getCalledFunction();
                         if (func != NULL) {
-                            if (func->getName().equals(PRIV_REMOVE_FUNC)) {
+                            StringRef funcName = func->getName();
+                            if (funcName.equals(PRIV_REMOVE_FUNC)) {
                                 insertAddPrivRmLOIFunc(M, CI, LOI + 1, getPrivSetFromPrivPrimitives(CI));
                                 LOI = -1;  // regard the call to priv_remove in the previous priv set
-                            } else if (execFuncs.find(func->getName()) != execFuncs.end()) {
+                            } else if (execFuncs.find(funcName) != execFuncs.end()) {
                                 // insert an addBBLOI and a reportPrivDistr
                                 insertAddBBLOIFunc(M, CI, LOI + 1);
                                 CallInst::Create(getReportPrivDstrFunc(M), "", CI);
                                 LOI = -1;
-                            } else if (func->getName().equals(FORK_FUNC)) {
+                            } else if (funcName.equals(FORK_FUNC)) {
                                 // insert an addBBLOI
                                 insertAddBBLOIFunc(M, CI, LOI + 1);
-                                insertForkHandler(M, CI);
+                                /* insertForkHandler(M, CI); */
                                 LOI = -1;
+                            } else if (funcName.equals("_exit") || funcName.equals("_EXIT")) {
+                                // the last instruction of this basic block is a _exit or _EXIT
+                                CallInst::Create(getReportPrivDstrFunc(M), "", CI); 
                             }
                         }
                     } 
@@ -304,6 +312,8 @@ Function *DynPrivDstr::getReportPrivDstrFunc(Module &M) {
     return reportPrivDstrFunc;
 }
 
+
+// a debug helper function
 // construct and insert call to forkHandler function
 void DynPrivDstr::insertForkHandler(Module &M, Instruction *insertBefore) {
     Type *voidType = Type::getVoidTy(M.getContext());
@@ -312,6 +322,7 @@ void DynPrivDstr::insertForkHandler(Module &M, Instruction *insertBefore) {
     Function *forkHandlerFunc = dyn_cast<Function>(targetFunc);
     CallInst::Create(forkHandlerFunc, "", insertBefore);
 }
+
 
 // construct and insert call to calledAtStart function
 void DynPrivDstr::insertInitFunc(Module &M) {
