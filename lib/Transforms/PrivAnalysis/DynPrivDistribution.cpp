@@ -58,6 +58,7 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
     std::set<BasicBlock *> forkBBs;    // BBs that have fork
     std::set<BasicBlock *> execBBs;  // BBs that have execve
     std::set<BasicBlock *> exitBBs;  // BBs that have _exit or _EXIT
+    std::set<BasicBlock *> changeIDBBs;
     getFuncUserBB(M.getFunction(PRIV_REMOVE_FUNC), privRmBBs);
     getFuncUserBB(M.getFunction(FORK_FUNC), forkBBs);
     getFuncUserBB(M.getFunction("_exit"), exitBBs);
@@ -69,6 +70,14 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
         getFuncUserBB(M.getFunction(execFunc), execBBs);
     }
 
+    // get all basic blocks that call a setuid family function
+    std::set<std::string> changeIDFuncs{
+        "setuid", "seteuid", "setgid", "setegid", "setresuid", "setresgid"
+    };
+    for (std::string changeIDFunc : changeIDFuncs) {
+        getFuncUserBB(M.getFunction(changeIDFunc), changeIDBBs);
+    }
+
     // iterate over all basic blocks 
     for (Module::iterator mi = M.begin(); mi != M.end(); mi++) {
         for (Function::iterator fi = mi->begin(); fi != mi->end(); fi++) {
@@ -77,12 +86,20 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
             if (privRmBBs.find(BB) != privRmBBs.end() || 
                     execBBs.find(BB) != execBBs.end() ||
                     exitBBs.find(BB) != exitBBs.end() ||
+                    changeIDBBs.find(BB) != changeIDBBs.end() ||
                     forkBBs.find(BB) != forkBBs.end()) {
-                // this basic block has at least one special call
+                // since new instructions might be added to this basic block,
+                // we need iterate over the original one 
+                std::vector<Instruction *> originalBB;
                 for (BasicBlock::iterator bbi = BB->begin(); bbi != BB->end(); bbi++) {
+                    originalBB.push_back(&*bbi);
+                }
+
+                // this basic block has at least one special call
+                for (Instruction *inst : originalBB) {
                     // JZ: I don't like variables names like I, CI, func, 
                     // but sometimes it's really hard to find good names!
-                    CallInst *CI = dyn_cast<CallInst>(&*bbi);
+                    CallInst *CI = dyn_cast<CallInst>(inst);
                     if (CI != NULL) {
                         Function *func = CI->getCalledFunction();
                         if (func != NULL) {
@@ -103,6 +120,11 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
                             } else if (funcName.equals("_exit") || funcName.equals("_EXIT")) {
                                 // the last instruction of this basic block is a _exit or _EXIT
                                 CallInst::Create(getReportPrivDstrFunc(M), "", CI); 
+                            } else if (changeIDFuncs.find(funcName) != changeIDFuncs.end()) {
+                                // insert after setuid
+                                Instruction *targetInst = dyn_cast<Instruction>(CI->getNextNode());
+                                insertChangeIDFunc(M, targetInst, LOI + 1);
+                                LOI = -1;
                             }
                         }
                     } 
@@ -208,7 +230,7 @@ void DynPrivDstr::insertInitDynCountFunc(Module &M) {
 }
 
 
-// construct the prototype of initDynCount function
+// construct the prototype of addPrivRmLOI function
 void DynPrivDstr::insertAddPrivRmLOIFunc(Module &M, Instruction *I, uint32_t LOI, uint64_t removedPriv) {
     // step1: construct the prototype for the addPrivRmLOI function
     std::vector<Type *> params;
@@ -238,8 +260,8 @@ void DynPrivDstr::insertAddPrivRmLOIFunc(Module &M, Instruction *I, uint32_t LOI
 
 
 /*
- * This function constructs and inserts the call of addPrivRmLOI function at the end of 
- * a basic block which doesn't contain priv_remove().
+ * This function constructs and inserts the call to addBBLOI function at the end of 
+ * a basic block.
  *
  * Please see the code of dynPrivDstr lib for more details of the addPrivRmLOI function.
  * */
@@ -249,9 +271,6 @@ void DynPrivDstr::insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint3
     IntegerType *int32Type = IntegerType::get(M.getContext(), 32); // parameter: LOI
     Type *voidType = Type::getVoidTy(M.getContext());  // return type: void
     params.push_back(int32Type);
-
-    /* ArrayType *arrayType = ArrayType::get(IntegerType::get(M.getContext(), 8), funcName.size()); */
-    /* params.push_back(arrayType); */
 
     // declare the function prototype
     FunctionType *addBBLOIFuncType = FunctionType::get(voidType, ArrayRef<Type *>(params), false);
@@ -269,6 +288,24 @@ void DynPrivDstr::insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint3
     CallInst::Create(addBBLOIFunc, ArrayRef<Value *>(args), "", insertBefore);
 }
 
+// construct and insert call to changeIDAddLOI
+void DynPrivDstr::insertChangeIDFunc(Module &M, Instruction *insertBefore, uint32_t LOI) {
+    // construct the prototype
+    std::vector<Type *> params;
+    IntegerType *int32Type = IntegerType::get(M.getContext(), 32);
+    Type *voidType = Type::getVoidTy(M.getContext());
+    params.push_back(int32Type);
+
+    FunctionType *changeIDFuncType = FunctionType::get(voidType, ArrayRef<Type *>(params), false);
+    Function *changeIDFunc = dyn_cast<Function>(M.getOrInsertFunction(CHANGE_ID_FUNC, changeIDFuncType));
+    assert(changeIDFunc && "Constructing changeID function failed!\n");
+
+    std::vector<Value *> args;
+    ConstantInt *LOIConst = ConstantInt::get(int32Type, LOI);
+    args.push_back(LOIConst);
+
+    CallInst::Create(changeIDFunc, ArrayRef<Value *>(args), "", insertBefore);
+}
 
 /*
  * This function constructs and inserts the reportPrivDistr function before the program exits 
