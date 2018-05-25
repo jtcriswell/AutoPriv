@@ -121,9 +121,9 @@ void DynPrivDstr::insertAddLOIFunc(Module &M) {
                                 // the last instruction of this basic block is a _exit or _EXIT
                                 CallInst::Create(getReportPrivDstrFunc(M), "", CI); 
                             } else if (changeIDFuncs.find(funcName) != changeIDFuncs.end()) {
-                                // insert after setuid
+                                // insert after setuid family functions
                                 Instruction *targetInst = dyn_cast<Instruction>(CI->getNextNode());
-                                insertChangeIDFunc(M, targetInst, LOI + 1);
+                                insertAddIDChangeLOIFunc(M, targetInst, LOI + 1);
                                 LOI = -1;
                             }
                         }
@@ -289,22 +289,23 @@ void DynPrivDstr::insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint3
 }
 
 // construct and insert call to changeIDAddLOI
-void DynPrivDstr::insertChangeIDFunc(Module &M, Instruction *insertBefore, uint32_t LOI) {
+void DynPrivDstr::insertAddIDChangeLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI) {
     // construct the prototype
     std::vector<Type *> params;
     IntegerType *int32Type = IntegerType::get(M.getContext(), 32);
     Type *voidType = Type::getVoidTy(M.getContext());
     params.push_back(int32Type);
 
-    FunctionType *changeIDFuncType = FunctionType::get(voidType, ArrayRef<Type *>(params), false);
-    Function *changeIDFunc = dyn_cast<Function>(M.getOrInsertFunction(CHANGE_ID_FUNC, changeIDFuncType));
-    assert(changeIDFunc && "Constructing changeID function failed!\n");
+    FunctionType *addIDChangeLOIFuncType = FunctionType::get(voidType, ArrayRef<Type *>(params), false);
+    Function *addIDChangeLOIFunc = dyn_cast<Function>(M.getOrInsertFunction(ADD_ID_CHANGE_LOI_FUNC, 
+                addIDChangeLOIFuncType));
+    assert(addIDChangeLOIFunc && "Constructing changeID function failed!\n");
 
     std::vector<Value *> args;
     ConstantInt *LOIConst = ConstantInt::get(int32Type, LOI);
     args.push_back(LOIConst);
 
-    CallInst::Create(changeIDFunc, ArrayRef<Value *>(args), "", insertBefore);
+    CallInst::Create(addIDChangeLOIFunc, ArrayRef<Value *>(args), "", insertBefore);
 }
 
 /*

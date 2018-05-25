@@ -30,7 +30,7 @@
 #define INIT_COUNT_FUNC "initDynCount"
 #define ADD_BB_LOI_FUNC "addBBLOI"
 #define ADD_PRIV_RM_LOI_FUNC "addPrivRmLOI"
-#define CHANGE_ID_FUNC "changeID"
+#define ADD_ID_CHANGE_LOI_FUNC "addIDChangeLOI"
 #define REPORT_PRIV_DSTR_FUNC "reportPrivDstr"
 #define ATEXIT_FUNC "atexit"
 
@@ -69,7 +69,7 @@ private:
     void insertAddBBLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI);
 
     // construct and insert call to changeIDAddLOI
-    void insertChangeIDFunc(Module &M, Instruction *insertBefore, uint32_t LOI);
+    void insertAddIDChangeLOIFunc(Module &M, Instruction *insertBefore, uint32_t LOI);
 
     // construct and insert call to atexit function
     void insertAtexitFunc(Module &M);
