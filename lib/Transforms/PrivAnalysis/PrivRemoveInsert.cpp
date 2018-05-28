@@ -1,7 +1,7 @@
 // ====----------  PrivRemoveInsert.cpp ----------*- C++ -*---====
 //
 // Based on the information from GlobalLiveAnalysis, insert 
-// privRemove calls at the end of BasicBlocks, to remove 
+// privRemove calls at the beginning or end of BasicBlocks, to remove 
 // unnecessary privileges. 
 //
 // ====-------------------------------------------------------====
@@ -52,11 +52,11 @@ Function *PrivRemoveInsert::getRemoveFunc(Module &M)
     Type *IntType = IntegerType::get(getGlobalContext(), 32);
     Params.push_back(IntType);
     FunctionType *RemoveCallType = FunctionType::get(IntType,
-                                                     ArrayRef<Type *>(Params),
-                                                     true);
+            ArrayRef<Type *>(Params),
+            true);
     Constant *PrivRemoveCall = M.getOrInsertFunction(PRIV_REMOVE_CALL,
-                                                     RemoveCallType);
-    
+            RemoveCallType);
+
     return dyn_cast<Function>(PrivRemoveCall);
 }
 
@@ -65,7 +65,7 @@ Function *PrivRemoveInsert::getRemoveFunc(Module &M)
 // param: Args - the Args vector to insert into
 //        CAPArray - the array of CAP to 
 void PrivRemoveInsert::addToArgs(std::vector<Value *>& Args,
-                                 const CAPArray_t &CAPArray)
+        const CAPArray_t &CAPArray)
 {
     int cap_num = 0;
     int cap = 0;
@@ -93,18 +93,18 @@ void PrivRemoveInsert::addToArgs(std::vector<Value *>& Args,
 
 static inline bool
 instrumentBasicBlock (const BasicBlock * BB) {
-	if (isa<UnreachableInst>(BB->getTerminator())) {
-		return false;
-	}
-	if (const CallInst * CI = dyn_cast<CallInst>(BB->getFirstNonPHI())) {
-		if (const Function * F = CI->getCalledFunction()) {
-			if (F->getName().str() == "llvm.trap") {
-				return false;
-			}
-		}
-	}
+    if (isa<UnreachableInst>(BB->getTerminator())) {
+        return false;
+    }
+    if (const CallInst * CI = dyn_cast<CallInst>(BB->getFirstNonPHI())) {
+        if (const Function * F = CI->getCalledFunction()) {
+            if (F->getName().str() == "llvm.trap") {
+                return false;
+            }
+        }
+    }
 
-	return true;
+    return true;
 }
 
 // Run on Module
@@ -127,50 +127,50 @@ bool PrivRemoveInsert::runOnModule(Module &M)
 
     // Insert call to all BBs with removable capabilities  
     for (auto BI = BBCAPTable_dropEnd.begin(), BE = BBCAPTable_dropEnd.end();
-         BI != BE; ++BI) {
+            BI != BE; ++BI) {
         BasicBlock *BB = BI->first;
         CAPArray_t &CAPArray = BI->second;
         Args.clear();
 
         addToArgs(Args, CAPArray);
 
-	//
-	// If the basic block belongs to a signal handler, do not instrument it.
-	//
-	if (SigHandlers.isSignalHandler (BB->getParent())) {
-		continue;
-	}
+        //
+        // If the basic block belongs to a signal handler, do not instrument it.
+        //
+        if (SigHandlers.isSignalHandler (BB->getParent())) {
+            continue;
+        }
 
         // create call instruction
         assert(BB->getTerminator() != NULL && "BB has a NULL teminator!");
-	if (instrumentBasicBlock (BB)) {
-		CallInst::Create(PrivRemoveFunc, ArrayRef<Value *>(Args), 
-				 "", BB->getTerminator());
-	}
+        if (instrumentBasicBlock (BB)) {
+            CallInst::Create(PrivRemoveFunc, ArrayRef<Value *>(Args), 
+                    "", BB->getTerminator());
+        }
     }
 
 
     // Insert at the start of the dropStart
     for (auto BI = BBCAPTable_dropStart.begin(), BE = BBCAPTable_dropStart.end();
-         BI != BE; ++BI) {
+            BI != BE; ++BI) {
         BasicBlock *BB = BI->first;
         CAPArray_t &CAPArray = BI->second;
         Args.clear();
 
         addToArgs(Args, CAPArray);
 
-	//
-	// If the basic block belongs to a signal handler, do not instrument it.
-	//
-	if (SigHandlers.isSignalHandler (BB->getParent())) {
-		continue;
-	}
+        //
+        // If the basic block belongs to a signal handler, do not instrument it.
+        //
+        if (SigHandlers.isSignalHandler (BB->getParent())) {
+            continue;
+        }
 
         // create call instruction
-	if (instrumentBasicBlock (BB)) {
-		CallInst::Create(PrivRemoveFunc, ArrayRef<Value *>(Args), 
-				 "", BB->getFirstNonPHI());
-	}
+        if (instrumentBasicBlock (BB)) {
+            CallInst::Create(PrivRemoveFunc, ArrayRef<Value *>(Args), 
+                    "", BB->getFirstNonPHI());
+        }
     }
 
     return true;
@@ -187,6 +187,6 @@ void PrivRemoveInsert::print(raw_ostream &O, const Module *M) const
 // register pass
 char PrivRemoveInsert::ID = 0;
 static RegisterPass<PrivRemoveInsert> I("PrivRemoveInsert", "Insert PrivRemove calls", 
-                                        true, /* CFG only? */
-                                        false /* Analysis pass? */);
+        true, /* CFG only? */
+        false /* Analysis pass? */);
 

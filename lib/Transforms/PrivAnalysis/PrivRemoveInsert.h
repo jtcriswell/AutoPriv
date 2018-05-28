@@ -1,7 +1,7 @@
 // ====----------  PrivRemoveInsert.h ------------*- C++ -*---====
 //
 // Based on the information from GlobalLiveAnalysis, insert 
-// privRemove calls at the end of BasicBlocks, to remove 
+// privRemove calls at the beginning or end of BasicBlocks, to remove 
 // unnecessary privileges. 
 //
 // ====-------------------------------------------------------====
