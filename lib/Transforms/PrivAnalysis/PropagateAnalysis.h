@@ -63,6 +63,9 @@ public:
     // Run on CallGraph SCC
     virtual bool runOnModule(Module &M);
 
+    // remove elements in FuncCAPTable that have no capabilities
+    void cleanFuncCAPTable();
+
     // Print out information for debugging purposes
     void print(raw_ostream &O, const Module *M) const;
 

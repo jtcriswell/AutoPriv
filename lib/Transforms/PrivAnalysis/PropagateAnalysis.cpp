@@ -67,6 +67,10 @@ bool PropagateAnalysis::runOnModule(Module &M)
 
     Propagate(M);
 
+#if 0
+    cleanFuncCAPTable();
+#endif
+    
     return false;
 }
 
@@ -240,6 +244,20 @@ void PropagateAnalysis::Propagate(Module &M)
     }
 }
 
+// remove elements in FuncCAPTable that have no capabilities
+void PropagateAnalysis::cleanFuncCAPTable() {
+    std::vector<Function *> unneededFuncs;
+    for (auto FCI = FuncCAPTable.begin(); FCI != FuncCAPTable.end(); FCI++) {
+        Function *F = FCI->first;
+        CAPArray_t A = FCI->second;
+        if (F != NULL && A == 0){
+            /* errs() << "Found an empty one: " << F->getName() << "\n"; */
+            unneededFuncs.push_back(F);
+        } 
+    }
+
+    for (Function *f : unneededFuncs) FuncCAPTable.erase(f);
+}
 
 // Print out information for debugging purposes
 void PropagateAnalysis::print(raw_ostream &O, const Module *M) const
