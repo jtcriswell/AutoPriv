@@ -85,6 +85,11 @@ bool SplitBB::runOnModule(Module &M)
     for (unsigned index = 0; index < callsToTransform.size(); ++index) {
         splitOnCall(callsToTransform[index], SPLIT_HERE | SPLIT_NEXT);
     }
+    
+#if 0
+    splitChecker(M);  // checking
+#endif
+
     return true;
 }
 
@@ -202,6 +207,25 @@ void SplitBB::print(raw_ostream &O, const Module *M) const
 }
 
 
+void SplitBB::splitChecker(Module &M) const {
+    /* errs() << "JZ: checking the spliting work\n"; */
+    for (Module::iterator MI = M.begin(); MI != M.end(); MI++) {
+        for (Function::iterator FI = MI->begin(); FI != MI->end(); FI++) {
+            bool hasMoreThanOneCalls = false;
+            for (BasicBlock::iterator BI = FI->begin(); BI != FI->end(); BI++) {
+                CallInst *CI = dyn_cast<CallInst>(&*BI);
+                if (CI != NULL) {
+                    /* assert(hasMoreThanOneCalls == false && "Some basic block has more than one calls."); */
+                    if (hasMoreThanOneCalls == true) {
+                        errs() << "Some basic block has more than one calls.\n";
+                        return;
+                    }
+                    hasMoreThanOneCalls = true;
+                } 
+            }
+        }
+    }
+}
 
 
 // getAnalysisUsage function

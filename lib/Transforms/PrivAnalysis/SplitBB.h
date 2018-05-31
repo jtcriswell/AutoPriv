@@ -63,6 +63,8 @@ private:
     void splitOnFunction(Function *F, unsigned splitLoc);
     void splitOnCall(CallInst * CI, unsigned splitLoc);
 
+    void splitChecker(Module &M) const;
+
 }; // struct splitBB
 
 } // namespace slitBB
