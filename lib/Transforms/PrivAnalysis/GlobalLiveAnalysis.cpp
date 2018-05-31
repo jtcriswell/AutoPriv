@@ -158,6 +158,7 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
                                 }
                             }
                         }
+                        // propagate fromm callees to caller BB; line 25 in alg3 in the paper
                         bbchanged |= UnionCAPArrays(BBCAPTable_in[B],
                                                     FuncUseCAPTable[funcall]);
                         // propagate information to returnBB of function
