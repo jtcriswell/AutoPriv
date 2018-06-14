@@ -277,6 +277,10 @@ bool GlobalLiveAnalysis::runOnModule(Module &M)
 
     // Find unique set for debug output or ROSA
     // findUniqueSet();
+    
+#if 0
+    printAllPrivset();
+#endif 
 
     return false;
 }
@@ -419,6 +423,22 @@ void GlobalLiveAnalysis::dumpTable()
     }
     errs() << "\n";
     
+}
+
+
+// get all possible privset
+void GlobalLiveAnalysis::printAllPrivset() {
+    std::set<CAPArray_t> privsets;
+    for (auto bbcap : BBCAPTable_in) {
+        privsets.insert(bbcap.second);
+    }
+    for (auto bbcap : BBCAPTable_out) {
+        privsets.insert(bbcap.second);
+    }
+
+    for (auto caps : privsets) {
+        dumpCAPArray(caps);
+    }
 }
 
 

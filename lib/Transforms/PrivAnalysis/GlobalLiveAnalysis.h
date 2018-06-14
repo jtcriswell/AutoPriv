@@ -66,6 +66,9 @@ private:
     // get the unique privilege set 
     void findUniqueSet();
 
+    // get all possible privset
+    void printAllPrivset();
+
     void dumpTable();
 };
 
