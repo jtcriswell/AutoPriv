@@ -207,20 +207,19 @@ void SplitBB::print(raw_ostream &O, const Module *M) const
 }
 
 
+// This function checks if there are more than one function calls in each BB
 void SplitBB::splitChecker(Module &M) const {
-    /* errs() << "JZ: checking the spliting work\n"; */
     for (Module::iterator MI = M.begin(); MI != M.end(); MI++) {
         for (Function::iterator FI = MI->begin(); FI != MI->end(); FI++) {
-            bool hasMoreThanOneCalls = false;
+            bool hasFuncCall = false;
             for (BasicBlock::iterator BI = FI->begin(); BI != FI->end(); BI++) {
                 CallInst *CI = dyn_cast<CallInst>(&*BI);
                 if (CI != NULL) {
-                    /* assert(hasMoreThanOneCalls == false && "Some basic block has more than one calls."); */
-                    if (hasMoreThanOneCalls == true) {
+                    if (hasFuncCall == true) {
                         errs() << "Some basic block has more than one calls.\n";
                         return;
                     }
-                    hasMoreThanOneCalls = true;
+                    hasFuncCall = true;
                 } 
             }
         }
