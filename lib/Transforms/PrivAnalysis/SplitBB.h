@@ -48,6 +48,9 @@ public:
     // Map from BB to its non-external Function Calls
     BBFuncTable_t BBFuncTable;
 
+    // number of pairs of priv-bracketing
+    uint32_t privBracketNum = 0;
+
     // initialization
     virtual bool doInitialization(Module &M);
 
@@ -56,6 +59,9 @@ public:
 
     // Preserve analysis usage
     void getAnalysisUsage(AnalysisUsage &AU) const;
+
+    // print how many syscalls/function are priv-bracketed
+    void printPrivBracketNum(const Module &M);
 
     void print(raw_ostream &O, const Module *M) const;
 private:

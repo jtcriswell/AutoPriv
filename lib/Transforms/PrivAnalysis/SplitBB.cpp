@@ -90,6 +90,10 @@ bool SplitBB::runOnModule(Module &M)
     splitChecker(M);  // checking
 #endif
 
+#if 0
+    printPrivBracketNum(M);
+#endif
+
     return true;
 }
 
@@ -206,6 +210,20 @@ void SplitBB::print(raw_ostream &O, const Module *M) const
     errs() << "CallSite BB size: " << CallSiteBB.size() << "\n";
 }
 
+
+// print how many syscalls/function are priv-bracketed
+void SplitBB::printPrivBracketNum(const Module &M) {
+    Function *priv_raiseFunc = M.getFunction(PRIVRAISE);
+    for (Value::user_iterator UI = priv_raiseFunc->user_begin(); UI != priv_raiseFunc->user_end(); UI++) {
+        CallInst *CI = dyn_cast<CallInst>(*UI);
+        if (CI == NULL || CI->getCalledFunction() != priv_raiseFunc) {
+            continue;
+        }
+        privBracketNum += 1;
+    }
+
+    errs() << "There are " << privBracketNum << " pairs of priv_bracketing.\n";
+}
 
 // This function checks if there are more than one function calls in each BB
 void SplitBB::splitChecker(Module &M) const {
