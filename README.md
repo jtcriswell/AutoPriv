@@ -22,10 +22,15 @@ calls that use some privilege(s).
 
 First, compile the target program to LLVM bitcode; then run opt with library
 `LLVMDataStructure.so`, `AssistDS.so` and `LLVMPrivAnalysis.so` loaded, which are all
-located in `you_build_directory/lib`, and specify `-PrivRemoveInsert`. It's also
-recommended to run the `internalize` and `simplifycfg` pass. Here is an exmaple,
-`$(OPT) -load $(DSALIB) -load $(ASSISTDSLIB) -load $(OPTLIB)  $(INTERNOPT) -PrivRemoveInsert -simplifycfg program.bc -o program.opt.bc`. After you get the `.opt.bc` file, run `clang` with
+located in `you_build_directory/lib`, and specify `-PrivRemoveInsert`. 
+
+It's also recommended to run the `internalize` and `simplifycfg` pass. Here is an exmaple,
+
+`$(OPT) -load $(DSALIB) -load $(ASSISTDSLIB) -load $(OPTLIB)  $(INTERNOPT) -PrivRemoveInsert -simplifycfg program.bc -o program.opt.bc`.
+
+After you get the `.opt.bc` file, run `clang` with
 `-lcap -lstdc++` and the priv-lib (e.g., `$(CLANG) program.opt.bc priv.c -o program -lcap -lstdc++`.
+
 Last, give the final executable the capabilities it needs by running `setcap`.
 
 If you have any questions about compiling and running **AutoPriv** and related
