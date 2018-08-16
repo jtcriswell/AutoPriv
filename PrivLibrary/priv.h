@@ -59,7 +59,7 @@ int priv_lower (const int count, ...);
  * return: 0 on success
  *         -1 on any error
  */
-int priv_drop (const int count, ...);
+int priv_remove (const int count, ...);
 
 
 /*
@@ -70,10 +70,5 @@ int priv_drop (const int count, ...);
  */
 int priv_lowerall ();
 
-
-/*
- * Print out the capability of the current process
- */
-void print_cap();
 
 #endif
