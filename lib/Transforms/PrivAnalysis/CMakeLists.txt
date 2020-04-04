@@ -8,5 +8,6 @@ add_llvm_loadable_module(LLVMPrivAnalysis
 	DynCount.cpp
 	LocalAnalysis.cpp
 	SplitBB.cpp
-    DynPrivDistribution.cpp
+	DynPrivDistribution.cpp
+	FindSignalHandlers.cpp
 )
