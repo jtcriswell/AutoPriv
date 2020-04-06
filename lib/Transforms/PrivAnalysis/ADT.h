@@ -9,7 +9,10 @@
 
 #include "llvm/IR/Module.h"
 
+#ifdef __linux__
 #include <linux/capability.h>
+#endif
+
 #include <cstdint>
 
 #include <map>
@@ -21,7 +24,11 @@
 #define TARGET_FUNC  "priv_raise"
 #define PRIVRAISE    "priv_raise"
 #define PRIVLOWER    "priv_lower"
+#ifdef __linux__
 #define CAP_TOTALNUM (CAP_LAST_CAP + 1)
+#else
+#define CAP_TOTALNUM 64
+#endif
 
 namespace llvm {
 namespace privAnalysis {
