@@ -17,7 +17,6 @@ set(SOURCES
   SimplifyInsertValue.cpp
   SimplifyLoad.cpp
   StructReturnToPointer.cpp
-  TypeChecks.cpp
   TypeChecksOpt.cpp
   )
 

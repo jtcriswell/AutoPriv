@@ -17,10 +17,10 @@ set(SOURCES
   SanityCheck.cpp
   StdLibPass.cpp
   TopDownClosure.cpp
+  TypeSafety.cpp
+  GraphChecker.cpp
   )
 
-#GraphChecker.cpp
-#TypeSafety.cpp
 add_llvm_library(LLVMDataStructure ${SOURCES})
 add_dependencies(LLVMDataStructure intrinsics_gen)
 add_dependencies(LLVMDataStructure LLVMAnalysis)
