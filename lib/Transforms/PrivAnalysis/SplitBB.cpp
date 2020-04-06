@@ -10,7 +10,6 @@
 #include "ADT.h"
 #include "SplitBB.h"
 
-#include <linux/capability.h>
 #include <map>
 #include <array>
 
